@@ -1,104 +1,181 @@
+// ==========================================
+// 1. BIẾN TOÀN CỤC & DOM ELEMENTS
+// ==========================================
 let storyData = [];
 let currentNodeIndex = 0;
 let isTyping = false;
-let typingSpeed = 30; // Tốc độ gõ: 30 mili-giây/ký tự
+let typingSpeed = 30; 
 let typeTimeout;
+let isWaitingForChoice = false; 
 
+// Trình phát âm thanh
+const sfxPlayer = new Audio(); 
 
-// Lấy các DOM Elements
+// Lấy các DOM Elements của màn hình Player
 const bgLayer = document.getElementById('background-layer');
 const charSprite = document.getElementById('character-sprite');
 const charName = document.getElementById('character-name');
 const dialogueText = document.getElementById('dialogue-text');
-const sfxPlayer = new Audio(); // Trình phát hiệu ứng âm thanh/giọng nói
+const choiceContainer = document.getElementById('choice-container');
 
-// Hàm khởi tạo Engine
+// Khởi tạo Engine
 function initEngine() {
-    storyData = []; // Khởi tạo mảng trống
-    updateTimelineUI();
+    storyData = []; 
+    // Nếu có data test, bạn có thể gán vào đây để test trực tiếp
+    renderFlowchart();
 }
 
-// 1. HÀM THÊM NODE MỚI TỪ GIAO DIỆN CHỈNH SỬA
+// ==========================================
+// 2. HỆ THỐNG TABS & GIAO DIỆN SƠ ĐỒ
+// ==========================================
+function switchTab(tabId) {
+    // Đổi màu nút Tab
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+
+    // Đổi giao diện hiển thị
+    document.querySelectorAll('.view-content').forEach(view => view.classList.remove('active-view'));
+    document.getElementById(tabId + '-view').classList.add('active-view');
+
+    // Nếu chuyển sang tab Flowchart, gọi hàm vẽ sơ đồ
+    if (tabId === 'flowchart') {
+        renderFlowchart();
+    }
+}
+
+function renderFlowchart() {
+    const canvas = document.getElementById('canvas-area');
+    canvas.innerHTML = ''; 
+
+    if (storyData.length === 0) {
+        canvas.innerHTML = '<p style="color:#888;">Chưa có dữ liệu kịch bản. Hãy tạo Node đầu tiên ở cột bên trái.</p>';
+        return;
+    }
+
+    storyData.forEach(node => {
+        const card = document.createElement('div');
+        card.className = 'flow-node';
+
+        let html = `<h4>ID: ${node.id}</h4>`;
+        html += `<p><strong>${node.characterName}:</strong></p>`;
+        
+        const shortText = node.dialogueText.length > 40 ? node.dialogueText.substring(0, 40) + '...' : node.dialogueText;
+        html += `<p class="dialogue-preview">"${shortText}"</p>`;
+
+        if (node.choices && node.choices.length > 0) {
+            html += `<p style="font-size:0.8rem; color:#f39c12; margin-bottom:5px;">Rẽ nhánh (Branching):</p>`;
+            node.choices.forEach(c => {
+                html += `<div class="flow-choice">
+                            ${c.text} <span>👉 ${c.nextNode}</span>
+                         </div>`;
+            });
+        } else {
+            html += `<div class="flow-choice" style="border-left-color: #3498db;">
+                        Tuyến tính <span>👉 ${node.nextNode}</span>
+                     </div>`;
+        }
+
+        card.innerHTML = html;
+        canvas.appendChild(card);
+    });
+}
+
+// ==========================================
+// 3. EDITOR: NHẬP LIỆU & THÊM NODE
+// ==========================================
+function addChoiceField() {
+    const container = document.getElementById('choices-container');
+    const row = document.createElement('div');
+    row.className = 'choice-input-row';
+    
+    row.innerHTML = `
+        <input type="text" class="choice-text" placeholder="Nội dung đáp án...">
+        <input type="text" class="choice-target" placeholder="ID Node đích (VD: node_thang)">
+        <button type="button" class="btn-remove-choice" onclick="this.parentElement.remove()">X</button>
+    `;
+    container.appendChild(row);
+}
+
 function addNewNode() {
+    let customId = document.getElementById('edit-node-id').value;
     const charName = document.getElementById('edit-char-name').value;
     const dialogue = document.getElementById('edit-dialogue').value;
+    const manualNextNode = document.getElementById('edit-next-node').value;
     
-    // Lấy đối tượng file từ thẻ input
     const imgFile = document.getElementById('edit-char-img').files[0];
-    const sfxFile = document.getElementById('edit-sfx').files[0];
+    const sfxFile = document.getElementById('edit-sfx')?.files[0]; 
+    const stopAudio = document.getElementById('edit-stop-audio')?.checked; 
 
     if (!charName || !dialogue) {
         alert("Vui lòng nhập Tên nhân vật và Nội dung thoại!");
         return;
     }
 
-    // Tạo URL ảo cho file ảnh và âm thanh nếu có
+    const nodeId = customId ? customId : "node_" + Date.now();
+
+    // Xử lý File Ảnh
     let imgUrl = "";
-    let sfxUrl = "";
     if (imgFile) imgUrl = URL.createObjectURL(imgFile);
-    if (sfxFile) sfxUrl = URL.createObjectURL(sfxFile);
+
+    // Xử lý File Âm thanh (Logic 3 trạng thái)
+    let audioConfig = { action: "continue" }; 
+    if (stopAudio) {
+        audioConfig = { action: "stop" };
+    } else if (sfxFile) {
+        audioConfig = { action: "play", url: URL.createObjectURL(sfxFile) };
+    }
+
+    // Thu thập các đáp án rẽ nhánh
+    const choices = [];
+    const choiceRows = document.querySelectorAll('.choice-input-row');
+    choiceRows.forEach(row => {
+        const text = row.querySelector('.choice-text').value;
+        const target = row.querySelector('.choice-target').value;
+        if (text) {
+            choices.push({ text: text, nextNode: target || "end" });
+        }
+    });
 
     const newNode = {
-        id: "node_" + Date.now(),
+        id: nodeId,
         characterName: charName,
-        characterSprite: imgUrl, // Lưu URL ảo của ảnh
+        characterSprite: imgUrl,
         dialogueText: dialogue,
-        audio: { sfx: sfxUrl },  // Lưu URL ảo của âm thanh
-        nextNode: "end"
+        audio: audioConfig,
+        choices: choices,
+        nextNode: manualNextNode || "end"
     };
 
-    if (storyData.length > 0) {
-        storyData[storyData.length - 1].nextNode = newNode.id;
+    // Nối với node trước đó nếu là đường thẳng
+    if (storyData.length > 0 && !customId) {
+        let lastNode = storyData[storyData.length - 1];
+        if (!lastNode.choices || lastNode.choices.length === 0) {
+            lastNode.nextNode = newNode.id;
+        }
     }
 
     storyData.push(newNode);
-    updateTimelineUI();
-    playNode(newNode.id); // Chạy thử ngay lập tức
     
-    // Reset form
+    // Reset Form
+    document.getElementById('edit-node-id').value = "";
     document.getElementById('edit-dialogue').value = "";
-    document.getElementById('edit-char-img').value = ""; // Xóa file đã chọn
-    document.getElementById('edit-sfx').value = "";
-}
+    document.getElementById('choices-container').innerHTML = ""; 
+    document.getElementById('edit-next-node').value = "";
+    document.getElementById('edit-char-img').value = "";
+    if(document.getElementById('edit-sfx')) document.getElementById('edit-sfx').value = "";
+    if(document.getElementById('edit-stop-audio')) document.getElementById('edit-stop-audio').checked = false;
 
-// 2. HÀM VẼ DANH SÁCH TIMELINE BÊN TRÁI
-function updateTimelineUI() {
-    const list = document.getElementById('timeline-list');
-    list.innerHTML = ""; // Xóa list cũ
-    
-    storyData.forEach((node, index) => {
-        const li = document.createElement('li');
-        // Chỉ lấy 20 ký tự đầu của câu thoại để hiển thị cho gọn
-        const shortText = node.dialogueText.length > 20 ? node.dialogueText.substring(0, 20) + "..." : node.dialogueText;
-        
-        li.textContent = `${index + 1}. ${node.characterName}: "${shortText}"`;
-        // Khi click vào 1 dòng trong list, player sẽ Preview ngay node đó
-        li.onclick = () => playNode(node.id); 
-        
-        list.appendChild(li);
-    });
-}
-
-// 3. HÀM XUẤT DỮ LIỆU RA FILE JSON (LƯU LẠI THÀNH QUẢ)
-function exportData() {
-    if(storyData.length === 0) {
-        alert("Chưa có dữ liệu để xuất!");
-        return;
+    // Chạy Node nếu đang ở tab Player, ngược lại thì vẽ Sơ đồ
+    if (document.getElementById('player-view').classList.contains('active-view')) {
+        playNode(newNode.id);
+    } else {
+        renderFlowchart();
     }
-    // Chuyển mảng Object thành chuỗi JSON chuẩn
-    const jsonString = JSON.stringify({ scenes: storyData }, null, 2);
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
-    
-    // Tạo một thẻ link ảo để kích hoạt trình duyệt tải file xuống
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "kịch_bản_của_tôi.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
 }
 
-// Hàm chạy một phân cảnh (Node)
+// ==========================================
+// 4. PLAYER: XỬ LÝ PLAY & HIỆU ỨNG GÕ CHỮ
+// ==========================================
 function playNode(nodeId) {
     const nodeIndex = storyData.findIndex(s => s.id === nodeId);
     if (nodeIndex === -1) return;
@@ -108,58 +185,114 @@ function playNode(nodeId) {
 
     charName.textContent = node.characterName;
     
-    // Xử lý hiển thị ảnh nhân vật
+    // Xử lý Ảnh
     if (node.characterSprite) {
         charSprite.src = node.characterSprite;
-        charSprite.style.display = "block"; // Hiện ảnh
+        charSprite.style.display = "block";
     } else {
-        charSprite.style.display = "none";  // Ẩn ảnh nếu không có file
+        charSprite.style.display = "none";
     }
 
-    // Xử lý phát âm thanh
-    if (node.audio && node.audio.sfx) {
-        sfxPlayer.src = node.audio.sfx;
-        sfxPlayer.play().catch(e => console.log("Lỗi phát âm thanh:", e));
+    // Xử lý Âm thanh (Stop / Play / Continue)
+    if (node.audio) {
+        if (node.audio.action === "stop") {
+            sfxPlayer.pause();
+            sfxPlayer.currentTime = 0;
+        } else if (node.audio.action === "play" && node.audio.url) {
+            sfxPlayer.src = node.audio.url;
+            sfxPlayer.play().catch(e => console.log("Lỗi phát âm thanh:", e));
+        }
     }
     
+    // Xử lý Nút lựa chọn (Branching Logic)
+    choiceContainer.innerHTML = ''; 
+    if (node.choices && node.choices.length > 0) {
+        isWaitingForChoice = true; 
+        choiceContainer.style.display = 'none'; // Ẩn nút đi cho đến khi chữ chạy xong
+        
+        node.choices.forEach(choice => {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.textContent = choice.text;
+            
+            btn.onclick = (e) => {
+                e.stopPropagation(); 
+                choiceContainer.style.display = 'none'; 
+                isWaitingForChoice = false; 
+                playNode(choice.nextNode); 
+            };
+            choiceContainer.appendChild(btn);
+        });
+    } else {
+        isWaitingForChoice = false;
+    }
+    
+    // Bắt đầu hiệu ứng gõ chữ
     dialogueText.textContent = "";
     isTyping = true;
     typeWriter(node.dialogueText, 0);
 }
 
-// Hàm hiệu ứng gõ chữ đệ quy
 function typeWriter(text, charIndex) {
     if (charIndex < text.length) {
         dialogueText.textContent += text.charAt(charIndex);
         charIndex++;
-        
-        // Chú ý: Sau này chúng ta sẽ chèn lệnh phát âm thanh "blip" vào ngay đây
-        
         typeTimeout = setTimeout(() => typeWriter(text, charIndex), typingSpeed);
     } else {
-        isTyping = false; // Đã gõ xong
+        isTyping = false; 
+        // Hiện nút bấm trắc nghiệm khi đã chạy xong chữ
+        const currentNode = storyData[currentNodeIndex];
+        if (currentNode.choices && currentNode.choices.length > 0) {
+            choiceContainer.style.display = 'flex';
+        }
     }
 }
 
-// Lắng nghe sự kiện click chuột
-document.addEventListener('click', () => {
+// ==========================================
+// 5. EVENT LISTENERS & EXPORT
+// ==========================================
+document.addEventListener('click', (e) => {
+    // Không bắt click nếu click vào phần Bảng điều khiển (Editor)
+    if (e.target.closest('#editor-panel') || e.target.closest('#tabs-bar')) return;
+    // Không cho click chuyển cảnh nếu đang chờ chọn đáp án
+    if (isWaitingForChoice && !isTyping) return; 
+
+    if (storyData.length === 0) return;
     const currentNode = storyData[currentNodeIndex];
     
     if (isTyping) {
-        // Nếu chữ đang chạy mà người dùng click -> Bỏ qua hiệu ứng gõ, hiện full chữ ngay lập tức
         clearTimeout(typeTimeout);
         dialogueText.textContent = currentNode.dialogueText;
         isTyping = false;
+        
+        if (currentNode.choices && currentNode.choices.length > 0) {
+            choiceContainer.style.display = 'flex';
+        }
     } else {
-        // Nếu chữ đã hiện xong, click để chuyển sang Node tiếp theo
         if (currentNode.nextNode === "end") {
             charName.textContent = "Hệ thống";
             dialogueText.textContent = "--- KẾT THÚC CÂU CHUYỆN ---";
-        } else {
+        } else if (!isWaitingForChoice) { 
             playNode(currentNode.nextNode);
         }
     }
 });
 
-// Kích hoạt engine
+function exportData() {
+    if(storyData.length === 0) {
+        alert("Chưa có dữ liệu để xuất!");
+        return;
+    }
+    const jsonString = JSON.stringify({ scenes: storyData }, null, 2);
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+    
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "story_engine_data.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+// Chạy khởi tạo
 initEngine();

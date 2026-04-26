@@ -8,11 +8,16 @@
 </head>
 <body>
     <div id="editor-panel">
-        <h2>Tạo Phân Cảnh (Story Node)</h2>
+        <h2>Tạo Phân Cảnh</h2>
         
         <div class="input-group">
+            <label>ID Phân cảnh (Tùy chọn, để trống tự tạo):</label>
+            <input type="text" id="edit-node-id" placeholder="Ví dụ: cau_hoi_1">
+        </div>
+
+        <div class="input-group">
             <label>Tên nhân vật:</label>
-            <input type="text" id="edit-char-name" placeholder="Ví dụ: Luật sư">
+            <input type="text" id="edit-char-name" placeholder="Ví dụ: Quan tòa">
         </div>
         
         <div class="input-group">
@@ -20,31 +25,47 @@
             <textarea id="edit-dialogue" rows="3" placeholder="Nhập câu thoại..."></textarea>
         </div>
         
-        <div class="input-group">
-            <label>Tải lên Ảnh Nhân vật/Bối cảnh:</label>
-            <input type="file" id="edit-char-img" accept="image/*">
+        <div class="input-group" style="background: #1a252f; padding: 10px; border-radius: 6px;">
+            <label>Các lựa chọn (Trắc nghiệm):</label>
+            <div id="choices-container">
+                </div>
+            <button type="button" onclick="addChoiceField()" style="background: #f39c12; margin-top: 10px;">+ Thêm đáp án</button>
+            <small style="color: #bdc3c7; font-size: 0.8rem; display: block; margin-top: 5px;">* Nếu không có đáp án, câu chuyện sẽ tuyến tính đi tới Node tiếp theo.</small>
         </div>
-        
+
         <div class="input-group">
-            <label>Tải lên Âm thanh (SFX/Voice):</label>
-            <input type="file" id="edit-sfx" accept="audio/*">
+            <label>Node tiếp theo (ID):</label>
+            <input type="text" id="edit-next-node" placeholder="Nhập ID cảnh tiếp theo (nếu có)">
         </div>
         
         <button id="btn-add-node" onclick="addNewNode()">Thêm Phân Cảnh</button>
         <button id="btn-export-json" onclick="exportData()">💾 Xuất File Kịch Bản (JSON)</button>
-        
-        <hr>
-        <h3>Dòng thời gian (Timeline)</h3>
-        <ul id="timeline-list"></ul> 
     </div>
 
-    <div id="story-container">
-        <div id="background-layer"></div>
-        <div id="character-layer"><img id="character-sprite" src="" alt=""></div>
-        <div id="fx-layer"></div>
-        <div id="dialogue-box">
-            <h3 id="character-name">Hệ thống</h3>
-            <p id="dialogue-text">Hãy tạo phân cảnh đầu tiên...</p>
+    <div id="workspace">
+        <div id="tabs-bar">
+            <button class="tab-btn active" onclick="switchTab('player')">🎮 Trình Phát (Game)</button>
+            <button class="tab-btn" onclick="switchTab('flowchart')">🕸️ Sơ Đồ (Scene)</button>
+        </div>
+
+        <div id="player-view" class="view-content active-view">
+            <div id="story-container">
+                <div id="background-layer"></div>
+                <div id="character-layer"><img id="character-sprite" src="" alt=""></div>
+                <div id="fx-layer"></div>
+                
+                <div id="choice-container" style="display: none;"></div>
+                
+                <div id="dialogue-box">
+                    <h3 id="character-name">Hệ thống</h3>
+                    <p id="dialogue-text">Hãy tạo phân cảnh đầu tiên...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="flowchart-view" class="view-content">
+            <div id="canvas-area">
+                </div>
         </div>
     </div>
 

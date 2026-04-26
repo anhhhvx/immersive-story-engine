@@ -1,8 +1,13 @@
 body {
-    display: flex; /* Kích hoạt chế độ chia đôi màn hình */
+    margin: 0;
+    padding: 0;
+    background-color: #1a1a1a;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    display: flex; /* Quan trọng: Lệnh này giúp chia màn hình thành 2 cột */
 }
 
-/* Kiểu dáng cho Bảng điều khiển bên trái */
+/* --- BẢNG ĐIỀU KHIỂN BÊN TRÁI --- */
 #editor-panel {
     width: 380px;
     background-color: #2c3e50;
@@ -15,12 +20,6 @@ body {
     z-index: 100;
 }
 
-#story-container {
-    flex-grow: 1; /* Player sẽ tự động lấp đầy phần diện tích còn lại */
-    /* Giữ nguyên các thuộc tính cũ của bạn ở đây */
-}
-
-/* Tinh chỉnh các ô nhập liệu cho đẹp mắt */
 .input-group { margin-bottom: 15px; }
 .input-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem;}
 .input-group input, .input-group textarea {
@@ -35,60 +34,57 @@ button {
     font-weight: bold; cursor: pointer; transition: 0.2s;
 }
 button:hover { background-color: #2980b9; }
-#btn-export-json { background-color: #27ae60; }
+#btn-export-json { background-color: #27ae60; margin-top: 10px; }
 #btn-export-json:hover { background-color: #2ecc71; }
 
-/* Danh sách Timeline */
 #timeline-list { list-style: none; padding: 0; }
 #timeline-list li {
     background: #34495e; padding: 10px; margin-bottom: 8px; border-radius: 6px;
     cursor: pointer; border-left: 4px solid #3498db; font-size: 0.9rem;
 }
 #timeline-list li:hover { background: #3b536b; }
-body {
-    margin: 0;
-    padding: 0;
-    background-color: #1a1a1a; /* Nền tối mặc định khi chưa có ảnh */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    overflow: hidden; /* Ẩn thanh cuộn */
-}
 
+/* --- MÀN HÌNH PLAYER BÊN PHẢI --- */
 #story-container {
+    flex-grow: 1; /* Chiếm toàn bộ phần không gian còn lại */
     position: relative;
-    width: 100vw;
     height: 100vh;
     display: flex;
-    justify-content: center;
-    align-items: flex-end; /* Đẩy khung thoại xuống dưới cùng */
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
 }
 
 #background-layer, #character-layer, #fx-layer {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0; width: 100%; height: 100%;
 }
 
-#background-layer {
-    background-size: cover;
-    background-position: center;
-    z-index: 1;
-}
+#background-layer { background-size: cover; background-position: center; z-index: 1; }
+#character-layer { z-index: 2; display: flex; justify-content: center; align-items: flex-end; }
+#character-sprite { height: 80vh; object-fit: contain; display: none; }
 
-#character-layer {
-    z-index: 2;
+#choice-container {
+    position: absolute;
+    bottom: 160px;
+    width: 80%;
+    max-width: 800px;
+    z-index: 20;
     display: flex;
-    justify-content: center;
-    align-items: flex-end;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
 }
 
-#character-sprite {
-    height: 80vh; /* Nhân vật chiếm 80% chiều cao màn hình */
-    object-fit: contain;
+.choice-btn {
+    background: rgba(41, 128, 185, 0.95);
+    color: white; border: 2px solid #fff; padding: 15px 30px;
+    font-size: 1.2rem; border-radius: 8px; cursor: pointer;
+    width: 80%; transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
 }
+.choice-btn:hover { background: rgba(52, 152, 219, 1); transform: scale(1.02); }
 
-/* Khung hội thoại bo góc, đổ bóng sạch sẽ */
 #dialogue-box {
     position: relative;
     z-index: 10;
@@ -103,18 +99,66 @@ body {
 }
 
 #character-name {
-    margin: 0 0 10px 0;
-    font-size: 1.4rem;
-    color: #333;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    margin: 0 0 10px 0; font-size: 1.4rem; color: #333;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
 }
 
 #dialogue-text {
-    margin: 0;
-    font-size: 1.2rem;
-    color: #444;
-    line-height: 1.6;
-    min-height: 3.8rem; /* Giữ chiều cao cố định để khung không bị giật khi gõ chữ */
+    margin: 0; font-size: 1.2rem; color: #444;
+    line-height: 1.6; min-height: 3.8rem;
 }
+
+/* --- CẤU TRÚC WORKSPACE BÊN PHẢI --- */
+#workspace {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: #1e1e1e;
+}
+
+/* --- THANH TABS --- */
+#tabs-bar {
+    display: flex;
+    background: #2c3e50;
+    padding: 0 10px;
+    border-bottom: 2px solid #000;
+}
+.tab-btn {
+    width: auto; margin: 0; margin-right: 5px;
+    border-radius: 8px 8px 0 0; background: #34495e;
+    color: #95a5a6; padding: 10px 20px; font-weight: normal;
+}
+.tab-btn:hover { background: #3b536b; }
+.tab-btn.active { background: #1e1e1e; color: #fff; font-weight: bold; border-bottom: none; }
+
+/* --- QUẢN LÝ HIỂN THỊ VIEWS --- */
+.view-content { display: none; flex-grow: 1; position: relative; }
+.view-content.active-view { display: flex; flex-direction: column; }
+
+/* Sửa lại story-container để fit với tab */
+#story-container { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+
+/* --- GIAO DIỆN FLOWCHART --- */
+#flowchart-view { overflow: auto; padding: 40px; background: #2d2d30; }
+#canvas-area {
+    display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-start;
+}
+
+.flow-node {
+    background: #252526; border: 2px solid #007acc; border-radius: 8px;
+    padding: 15px; width: 250px; color: #d4d4d4; font-size: 0.9rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.flow-node h4 { margin: 0 0 10px 0; color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 5px; }
+.flow-node .dialogue-preview { margin-bottom: 10px; font-style: italic; color: #ce9178; }
+.flow-choice {
+    background: #333; padding: 5px 10px; margin-top: 5px; border-radius: 4px;
+    border-left: 3px solid #f39c12; display: flex; justify-content: space-between;
+}
+.flow-choice span { color: #4ec9b0; font-size: 0.8rem;}
+
+/* Các ô nhập đáp án động */
+.choice-input-row { display: flex; gap: 5px; margin-bottom: 5px; }
+.choice-input-row input { flex-grow: 1; }
+.btn-remove-choice { width: auto !important; background: #e74c3c !important; padding: 10px !important; margin: 0 !important; }
