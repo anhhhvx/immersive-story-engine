@@ -1,0 +1,30 @@
+{
+  "scenes": [
+    {
+      "id": "node_001",
+      "characterName": "Luật sư",
+      "characterSprite": "assets/img/lawyer_point.png",
+      "background": "assets/img/courtroom.jpg",
+      "dialogueText": "Khoan đã! Lời khai này có điểm vô lý!",
+      "audio": {
+        "bgm": "assets/audio/tense_music.mp3",
+        "sfx": "assets/audio/desk_slam.wav"
+      },
+      "visualEffect": "screen_shake",
+      "nextNode": "node_002"
+    },
+    {
+      "id": "node_002",
+      "characterName": "Nhân chứng",
+      "characterSprite": "assets/img/witness_shock.png",
+      "background": "assets/img/courtroom.jpg",
+      "dialogueText": "Anh... anh nói gì cơ?",
+      "audio": {
+        "bgm": "continue", 
+        "sfx": "none"
+      },
+      "visualEffect": "none",
+      "nextNode": "end"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Immersive Story Engine</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="editor-panel">
+        <h2>Tạo Phân Cảnh (Story Node)</h2>
+        
+        <div class="input-group">
+            <label>Tên nhân vật:</label>
+            <input type="text" id="edit-char-name" placeholder="Ví dụ: Luật sư">
+        </div>
+        
+        <div class="input-group">
+            <label>Nội dung thoại:</label>
+            <textarea id="edit-dialogue" rows="3" placeholder="Nhập câu thoại..."></textarea>
+        </div>
+        
+        <div class="input-group">
+            <label>Tải lên Ảnh Nhân vật/Bối cảnh:</label>
+            <input type="file" id="edit-char-img" accept="image/*">
+        </div>
+        
+        <div class="input-group">
+            <label>Tải lên Âm thanh (SFX/Voice):</label>
+            <input type="file" id="edit-sfx" accept="audio/*">
+        </div>
+        
+        <button id="btn-add-node" onclick="addNewNode()">Thêm Phân Cảnh</button>
+        <button id="btn-export-json" onclick="exportData()">💾 Xuất File Kịch Bản (JSON)</button>
+        
+        <hr>
+        <h3>Dòng thời gian (Timeline)</h3>
+        <ul id="timeline-list"></ul> 
+    </div>
+
+    <div id="story-container">
+        <div id="background-layer"></div>
+        <div id="character-layer"><img id="character-sprite" src="" alt=""></div>
+        <div id="fx-layer"></div>
+        <div id="dialogue-box">
+            <h3 id="character-name">Hệ thống</h3>
+            <p id="dialogue-text">Hãy tạo phân cảnh đầu tiên...</p>
+        </div>
+    </div>
+
+    <script src="engine.js"></script>
+</body>
+</html>
