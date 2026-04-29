@@ -11,7 +11,7 @@
         <h2>Tạo Phân Cảnh</h2>
         
         <div class="input-group">
-            <label>ID Phân cảnh (Tùy chọn, để trống tự tạo):</label>
+            <label>ID Phân cảnh (Tùy chọn):</label>
             <input type="text" id="edit-node-id" placeholder="Ví dụ: cau_hoi_1">
         </div>
 
@@ -24,7 +24,20 @@
             <label>Nội dung thoại:</label>
             <textarea id="edit-dialogue" rows="3" placeholder="Nhập câu thoại..."></textarea>
         </div>
+
+        <div class="input-group">
+            <label>Tải lên Ảnh Nhân vật/Bối cảnh:</label>
+            <input type="file" id="edit-char-img" accept="image/*">
+        </div>
         
+        <div class="input-group">
+            <label>Âm thanh (Nhạc nền/SFX):</label>
+            <input type="file" id="edit-sfx" accept="audio/*">
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="edit-stop-audio" style="width: auto; cursor: pointer;">
+                <label for="edit-stop-audio" style="margin: 0; font-weight: normal; font-size: 0.9rem; cursor: pointer;">Dừng nhạc ở phân cảnh này</label>
+            </div>
+        </div>
         <div class="input-group" style="background: #1a252f; padding: 10px; border-radius: 6px;">
             <label>Các lựa chọn (Trắc nghiệm):</label>
             <div id="choices-container">

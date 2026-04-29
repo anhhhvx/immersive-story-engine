@@ -102,7 +102,7 @@ function addNewNode() {
     const dialogue = document.getElementById('edit-dialogue').value;
     const manualNextNode = document.getElementById('edit-next-node').value;
     
-    const imgFile = document.getElementById('edit-char-img').files[0];
+    const imgFile = document.getElementById('edit-char-img')?.files[0];
     const sfxFile = document.getElementById('edit-sfx')?.files[0]; 
     const stopAudio = document.getElementById('edit-stop-audio')?.checked; 
 
