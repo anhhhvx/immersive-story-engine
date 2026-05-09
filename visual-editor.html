@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Visual & Audio Setup</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .setup-container { display: flex; gap: 20px; padding: 20px; color: white; }
+        .preview-box { 
+            flex: 1; border: 2px dashed #555; position: relative; 
+            height: 500px; background: #000; overflow: hidden; 
+        }
+        .controls-box { width: 400px; background: #2c3e50; padding: 20px; border-radius: 8px; }
+        .effect-select { width: 100%; padding: 10px; margin: 10px 0; background: #34495e; color: white; border: none; }
+        .fx-overlay { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none; z-index: 5; }
+        .fx-sepia { backdrop-filter: sepia(0.8); }
+        .fx-grayscale { backdrop-filter: grayscale(1); }
+        .fx-blur { backdrop-filter: blur(5px); }
+        .fx-invert { backdrop-filter: invert(1); }
+        button { width: 100%; padding: 12px; margin-top: 10px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; }
+    </style>
+</head>
+<body style="display: block; overflow: auto; background: #1a1a1a;">
+    <div class="setup-container">
+        <div class="controls-box">
+            <h2>Thiết lập Hiệu ứng</h2>
+            <p id="editing-node-info" style="color: #f39c12; font-weight: bold;">Đang sửa Node: None</p>
+
+            <div class="input-group">
+                <label>Ảnh Nền (Background):</label>
+                <input type="file" id="setup-bg" accept="image/*" onchange="previewVisuals()">
+            </div>
+
+            <div class="input-group">
+                <label>Hiệu ứng Hình ảnh (VFX):</label>
+                <select id="setup-vfx" class="effect-select" onchange="previewVisuals()">
+                    <option value="">Không có</option>
+                    <option value="fx-sepia">Hoài niệm (Sepia)</option>
+                    <option value="fx-grayscale">Trắng đen</option>
+                    <option value="fx-blur">Mờ ảo (Blur)</option>
+                    <option value="fx-invert">Kinh dị (Invert)</option>
+                </select>
+            </div>
+
+            <button onclick="saveAndReturn()" style="background: #27ae60;">✅ LƯU & QUAY LẠI KỊCH BẢN</button>
+            <button onclick="window.location.href='index.html'" style="background: #e74c3c;">Hủy bỏ</button>
+        </div>
+
+        <div class="preview-box" id="preview-screen">
+            <div id="vfx-layer" class="fx-overlay"></div>
+            <img id="prev-bg" style="width:100%; height:100%; object-fit: cover; position:absolute; top:0; left:0;">
+            <img id="prev-char" style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:80%; z-index: 2;">
+            <div style="position:absolute; bottom:20px; left:20px; color:white; background:rgba(0,0,0,0.7); padding:10px; z-index: 10;">
+                Chế độ xem trước (Preview)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Lấy dữ liệu an toàn
+        let editingNodeId = localStorage.getItem('editingNodeId');
+        let storyData = [];
+        try {
+            storyData = JSON.parse(localStorage.getItem('storyData') || '[]');
+        } catch(e) { storyData = []; }
+
+        let nodeIndex = storyData.findIndex(n => n.id === editingNodeId);
+        let node = nodeIndex !== -1 ? storyData[nodeIndex] : null;
+
+        document.getElementById('editing-node-info').innerText = "Đang sửa Node: " + (editingNodeId || "Chưa xác định");
+
+        // 2. Khởi tạo giao diện dựa trên dữ liệu cũ
+        if (node) {
+            if (node.characterSprite) document.getElementById('prev-char').src = node.characterSprite;
+            if (node.visualConfig) {
+                document.getElementById('setup-vfx').value = node.visualConfig.vfx || "";
+                document.getElementById('prev-bg').src = node.visualConfig.bgUrl || "";
+                previewVisuals();
+            }
+        }
+
+        function previewVisuals() {
+            const vfx = document.getElementById('setup-vfx').value;
+            const vfxLayer = document.getElementById('vfx-layer');
+            const bgFile = document.getElementById('setup-bg').files[0];
+            
+            vfxLayer.className = "fx-overlay " + vfx;
+
+            if (bgFile) {
+                const url = URL.createObjectURL(bgFile);
+                document.getElementById('prev-bg').src = url;
+            }
+        }
+
+        function saveAndReturn() {
+            try {
+                const vfx = document.getElementById('setup-vfx').value;
+                const bgSrc = document.getElementById('prev-bg').src;
+
+                // KIỂM TRA AN TOÀN: Nếu node chưa tồn tại trong mảng, tạo mới nó luôn
+                if (nodeIndex === -1) {
+                    const newNode = {
+                        id: editingNodeId,
+                        characterName: "Nhân vật mới",
+                        dialogueText: "Nội dung trống",
+                        nextNode: "end",
+                        characterSprite: "",
+                        visualConfig: { vfx: vfx, bgUrl: bgSrc }
+                    };
+                    storyData.push(newNode);
+                } else {
+                    // Nếu đã có thì cập nhật
+                    storyData[nodeIndex].visualConfig = {
+                        vfx: vfx,
+                        bgUrl: bgSrc
+                    };
+                }
+
+                // Lưu lại
+                localStorage.setItem('storyData', JSON.stringify(storyData));
+                
+                // Thông báo và chuyển hướng
+                alert("Đã lưu thiết lập hiệu ứng!");
+                window.location.href = 'index.html';
+                
+            } catch (err) {
+                console.error("Lỗi khi lưu:", err);
+                alert("Không thể lưu: " + err.message);
+            }
+        }
+    </script>
+</body>
+</html>

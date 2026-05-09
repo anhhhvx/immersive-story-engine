@@ -20,8 +20,13 @@ const choiceContainer = document.getElementById('choice-container');
 
 // Khởi tạo Engine
 function initEngine() {
-    storyData = []; 
-    // Nếu có data test, bạn có thể gán vào đây để test trực tiếp
+    // Kiểm tra xem có dữ liệu mới từ Visual Editor gửi về không
+    const savedData = localStorage.getItem('storyData');
+    if (savedData) {
+        storyData = JSON.parse(savedData);
+    } else {
+        storyData = []; 
+    }
     renderFlowchart();
 }
 
@@ -154,6 +159,7 @@ function addNewNode() {
         }
     }
 
+
     storyData.push(newNode);
     
     // Reset Form
@@ -173,6 +179,22 @@ function addNewNode() {
     }
 }
 
+// Thêm vào sau hàm addNewNode()
+    function goToVisualEditor() {
+        let customId = document.getElementById('edit-node-id').value;
+        if (!customId) {
+            alert("Vui lòng nhập ID Node trước khi thiết lập hiệu ứng!");
+            return;
+        }
+        
+        // Lưu trạng thái hiện tại vào LocalStorage để trang kia đọc được
+        localStorage.setItem('editingNodeId', customId);
+        localStorage.setItem('storyData', JSON.stringify(storyData));
+        
+        // Chuyển sang trang của bạn
+        window.location.href = 'visual-editor.html';
+    }
+    
 // ==========================================
 // 4. PLAYER: XỬ LÝ PLAY & HIỆU ỨNG GÕ CHỮ
 // ==========================================
@@ -191,6 +213,23 @@ function playNode(nodeId) {
         charSprite.style.display = "block";
     } else {
         charSprite.style.display = "none";
+    }
+
+    // Kiểm tra hiệu ứng hình ảnh
+    const fxLayer = document.getElementById('fx-layer');
+    if (node.visualConfig) {
+        // Áp dụng Background nếu có
+        if (node.visualConfig.bgUrl) {
+            bgLayer.style.backgroundImage = `url('${node.visualConfig.bgUrl}')`;
+            bgLayer.style.backgroundSize = "cover";
+        }
+        // Áp dụng Filter hiệu ứng (VFX)
+        if (fxLayer) {
+            fxLayer.className = "fx-overlay " + (node.visualConfig.vfx || "");
+        }
+    } else {
+        // Nếu node không có config riêng, xóa filter cũ
+        if (fxLayer) fxLayer.className = "fx-overlay";
     }
 
     // Xử lý Âm thanh (Stop / Play / Continue)
