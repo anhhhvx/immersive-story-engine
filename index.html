@@ -13,47 +13,63 @@
         <h2>Tạo Phân Cảnh</h2>
         
         <div class="input-group">
-            <label>ID Phân cảnh (Tùy chọn):</label>
-            <input type="text" id="edit-node-id" placeholder="Ví dụ: cau_hoi_1">
+            <input type="text" id="edit-node-id" placeholder="ID Phân cảnh (Tùy chọn, VD: khai_1)">
+            <input type="text" id="edit-char-name" placeholder="Tên nhân vật (VD: Quan tòa)" style="margin-top: 8px;">
+            <textarea id="edit-dialogue" rows="3" placeholder="Nhập câu thoại..." style="margin-top: 8px;"></textarea>
+            <input type="text" id="edit-next-node" placeholder="ID Node tiếp theo (Mặc định: end)" style="margin-top: 8px;">
         </div>
 
         <div class="input-group">
-            <label>Tên nhân vật:</label>
-            <input type="text" id="edit-char-name" placeholder="Ví dụ: Quan tòa">
-        </div>
-        
-        <div class="input-group">
-            <label>Nội dung thoại:</label>
-            <textarea id="edit-dialogue" rows="3" placeholder="Nhập câu thoại..."></textarea>
-        </div>
-
-        <div class="input-group">
-            <label>Tải lên Ảnh Nhân vật/Bối cảnh:</label>
+            <label>Media (Ảnh/Audio):</label>
             <input type="file" id="edit-char-img" accept="image/*">
-        </div>
-        
-        <div class="input-group">
-            <label>Âm thanh (Nhạc nền/SFX):</label>
-            <input type="file" id="edit-sfx" accept="audio/*">
+            <input type="file" id="edit-sfx" accept="audio/*" style="margin-top: 8px;">
             <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="edit-stop-audio" style="width: auto; cursor: pointer;">
-                <label for="edit-stop-audio" style="margin: 0; font-weight: normal; font-size: 0.9rem; cursor: pointer;">Dừng nhạc ở phân cảnh này</label>
+                <label for="edit-stop-audio" style="margin: 0; font-size: 0.9rem;">Dừng nhạc</label>
             </div>
         </div>
-        <div class="input-group" style="background: #1a252f; padding: 10px; border-radius: 6px;">
-            <label>Các lựa chọn (Trắc nghiệm):</label>
-            <div id="choices-container">
-                </div>
-            <button type="button" onclick="addChoiceField()" style="background: #f39c12; margin-top: 10px;">+ Thêm đáp án</button>
-            <small style="color: #bdc3c7; font-size: 0.8rem; display: block; margin-top: 5px;">* Nếu không có đáp án, câu chuyện sẽ tuyến tính đi tới Node tiếp theo.</small>
+
+        <div class="input-group ce-box">
+            <label>⚔️ Cơ chế Đối chất (Cross-Examination):</label>
+            
+            <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+                <small><b>1. Dành cho Node Lời khai:</b></small>
+                <input type="text" id="edit-press-node" placeholder="ID Node Tra hỏi (Nhấn Q)" style="margin-top: 5px;">
+            </div>
+
+            <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+                <small><b>2. Quản lý (Khởi tạo vòng lặp):</b></small>
+                <input type="text" id="edit-ce-setup" placeholder="DS ID Lời khai (VD: k1,k2,k3)" style="margin-top: 5px;">
+                <input type="text" id="edit-ce-hint" placeholder="Node Gợi ý (Khi lướt quá vòng)" style="margin-top: 5px;">
+                <input type="text" id="edit-ce-all-pressed" placeholder="Node đích (Tra hỏi đủ 100%)" style="margin-top: 5px;">
+                <input type="text" id="edit-ce-fail-ev" placeholder="Node Phạt chung (Khi trình SAI bằng chứng)" style="margin-top: 5px; border: 1px solid #f1c40f;">
+            </div>
+
+            <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px;">
+                <small><b>3. Thêm lời khai (Dùng trong Node Tra hỏi):</b></small>
+                <input type="text" id="edit-ce-add-new" placeholder="ID Lời khai mới (VD: k4)" style="margin-top: 5px;">
+                <input type="text" id="edit-ce-add-after" placeholder="Chèn sau ID (VD: k2)" style="margin-top: 5px;">
+            </div>
         </div>
 
-        <div class="input-group">
-            <label>Node tiếp theo (ID):</label>
-            <input type="text" id="edit-next-node" placeholder="Nhập ID cảnh tiếp theo (nếu có)">
+        <div class="input-group evidence-box">
+            <label>🔎 Bằng chứng & Trắc nghiệm:</label>
+            <input type="text" id="edit-correct-ev" placeholder="Yêu cầu ID Bằng chứng (VD: ev_1)">
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <input type="text" id="edit-ev-pass" placeholder="Node ĐÚNG">
+                <input type="text" id="edit-ev-fail" placeholder="Node SAI riêng (Nếu cần)">
+            </div>
+            
+            <input type="text" id="edit-add-ev-id" placeholder="Thu thập: ID Bằng chứng mới" style="margin-top: 15px;">
+            <input type="text" id="edit-add-ev-name" placeholder="Tên Bằng chứng mới" style="margin-top: 5px;">
+            <input type="text" id="edit-add-ev-desc" placeholder="Mô tả..." style="margin-top: 5px;">
+            <input type="text" id="edit-add-ev-img" placeholder="URL Ảnh" style="margin-top: 5px;">
+
+            <div id="choices-container" style="margin-top: 15px;"></div>
+            <button type="button" onclick="addChoiceField()" style="background: #f39c12; margin-top: 5px;">+ Thêm đáp án (Branching)</button>
         </div>
         
-        <button id="btn-add-node" onclick="addNewNode()">Thêm Phân Cảnh</button>
+        <button id="btn-add-node" onclick="addNewNode()" style="background: #e74c3c; font-size: 1.1rem; padding: 15px;">THÊM PHÂN CẢNH</button>
         <button id="btn-export-json" onclick="exportData()">💾 Xuất File Kịch Bản (JSON)</button>
     </div>
 
@@ -69,19 +85,47 @@
                 <div id="character-layer"><img id="character-sprite" src="" alt=""></div>
                 <div id="fx-layer"></div>
                 
+                <div id="ce-ui" style="display: none;">
+                    <div id="ce-arrow-left" class="ce-arrow" onclick="goPrevTestimony()">&#10094;</div>
+                    <div id="ce-arrow-right" class="ce-arrow" onclick="goNextTestimony()">&#10095;</div>
+                    <div id="ce-dots-container"></div>
+                </div>
+
                 <div id="choice-container" style="display: none;"></div>
                 
+                <div id="evidence-added-popup" style="display: none;">
+                    <div class="ev-added-content">
+                        <div class="ev-added-left"><img id="ev-added-img" src="" alt=""></div>
+                        <div class="ev-added-right">
+                            <h3 id="ev-added-name">Tên bằng chứng</h3>
+                            <p id="ev-added-desc">Mô tả</p>
+                        </div>
+                    </div>
+                    <div class="ev-added-banner">Đã thêm vào Hồ sơ vụ án</div>
+                </div>
+
+                <div id="inventory-ui" style="display: none;">
+                    <div id="evidence-info">
+                        <h3 id="ev-name">Tên Bằng Chứng</h3>
+                        <p id="ev-desc">Mô tả...</p>
+                    </div>
+                    <div id="evidence-grid"></div>
+                    <div class="hint-text">Nhấn [ E ] để Trình bằng chứng</div>
+                </div>
+                
                 <div id="dialogue-box">
+                    <div id="action-hints" style="position: absolute; top: -30px; right: 0; display: none;">
+                        <span class="hint-pill">Nhấn [ Q ] Tra hỏi</span>
+                        <span class="hint-pill">Nhấn [ E ] Bằng chứng</span>
+                    </div>
+
                     <h3 id="character-name">Hệ thống</h3>
                     <p id="dialogue-text">Hãy tạo phân cảnh đầu tiên...</p>
                 </div>
             </div>
         </div>
 
-        <div id="flowchart-view" class="view-content">
-            <div id="canvas-area">
-                </div>
-        </div>
+        <div id="flowchart-view" class="view-content"><div id="canvas-area"></div></div>
     </div>
 
     <script src="engine.js"></script>
