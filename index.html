@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Immersive Story Engine</title>
+    <title>Immersive Story Engine - Node Editor</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="editor-panel">
         <button type="button" onclick="goToVisualEditor()" style="background: #9b59b6;">Thiết lập Hiệu ứng & Nền</button>
 
-        <h2>Tạo Phân Cảnh</h2>
+        <h2>Tạo Phân Cảnh Mới</h2>
         
         <div class="input-group">
             <input type="text" id="edit-node-id" placeholder="ID Phân cảnh (Tùy chọn, VD: khai_1)">
@@ -19,64 +19,89 @@
             <input type="text" id="edit-next-node" placeholder="ID Node tiếp theo (Mặc định: end)" style="margin-top: 8px;">
         </div>
 
-        <div class="input-group">
-            <label>Media (Ảnh/Audio):</label>
-            <input type="file" id="edit-char-img" accept="image/*">
-            <input type="file" id="edit-sfx" accept="audio/*" style="margin-top: 8px;">
+        <div class="input-group" style="background: #2c3e50; padding: 10px; border-radius: 6px; border: 1px solid #34495e;">
+            <label style="color: #ecf0f1;">🖼️ Nền (Background) & VFX:</label>
+            <input type="file" id="edit-bg-img" accept="image/*" style="margin-top: 5px;">
+            <select id="edit-bg-vfx" style="margin-top: 5px; width: 100%; padding: 5px; background: #34495e; color: white; border: none;">
+                <option value="">Không có (Bình thường)</option>
+                <option value="fx-sepia">Hoài niệm (Sepia)</option>
+                <option value="fx-grayscale">Trắng đen (Grayscale)</option>
+                <option value="fx-blur">Mờ ảo (Blur)</option>
+                <option value="fx-invert">Kinh dị (Invert)</option>
+            </select>
+            
+            <label style="color: #ecf0f1; margin-top: 15px; display: block;">🧍 Nhân vật (Character) & VFX:</label>
+            <input type="file" id="edit-char-img" accept="image/*" style="margin-top: 5px;">
+            <select id="edit-char-vfx" style="margin-top: 5px; width: 100%; padding: 5px; background: #34495e; color: white; border: none;">
+                <option value="">Không có (Bình thường)</option>
+                <option value="fx-sepia">Hoài niệm (Sepia)</option>
+                <option value="fx-grayscale">Trắng đen (Grayscale)</option>
+                <option value="fx-blur">Mờ ảo (Blur)</option>
+                <option value="fx-invert">Kinh dị (Invert)</option>
+            </select>
+        </div>
+
+        <div class="input-group" style="background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+            <label style="color: #4ec9b0;">🎵 Nhạc nền (BGM):</label>
+            <input type="file" id="edit-bgm" accept="audio/*" style="margin-top: 5px;">
             <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="edit-stop-audio" style="width: auto; cursor: pointer;">
-                <label for="edit-stop-audio" style="margin: 0; font-size: 0.9rem;">Dừng nhạc</label>
+                <label for="edit-stop-audio" style="margin: 0; font-size: 0.9rem; color: #fff;">Dừng nhạc nền</label>
             </div>
+            
+            <label style="color: #f1c40f; display: block; margin-top: 15px;">💥 Hiệu ứng SFX đầu câu:</label>
+            <input type="file" id="edit-sfx" accept="audio/*" style="margin-top: 5px;">
+        </div>
+
+        <div class="input-group hp-box">
+            <label>❤️ Thanh Năng Lực (Penalty Bar):</label>
+            <select id="edit-hp-state" style="margin-bottom: 5px;">
+                <option value="hidden">Không có (Ẩn / Cất đi)</option>
+                <option value="visible">Hiển thị bình thường (Visible)</option>
+                <option value="warning">Nhấp nháy cảnh báo (Throbbing)</option>
+                <option value="damage">Trừ điểm máu (Damage)</option>
+            </select>
+            <input type="number" id="edit-hp-amount" placeholder="Số điểm cảnh báo/bị trừ (VD: 2)" min="0" max="10">
         </div>
 
         <div class="input-group ce-box">
-            <label>⚔️ Cơ chế Đối chất (Cross-Examination):</label>
+            <label>⚔️ Đối chất (Cross-Examination):</label>
+            <input type="text" id="edit-press-node" placeholder="1. ID Node Tra hỏi (Nhấn Q)" style="margin-top: 5px;">
             
-            <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-                <small><b>1. Dành cho Node Lời khai:</b></small>
-                <input type="text" id="edit-press-node" placeholder="ID Node Tra hỏi (Nhấn Q)" style="margin-top: 5px;">
-            </div>
-
-            <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-                <small><b>2. Quản lý (Khởi tạo vòng lặp):</b></small>
-                <input type="text" id="edit-ce-setup" placeholder="DS ID Lời khai (VD: k1,k2,k3)" style="margin-top: 5px;">
-                <input type="text" id="edit-ce-hint" placeholder="Node Gợi ý (Khi lướt quá vòng)" style="margin-top: 5px;">
-                <input type="text" id="edit-ce-all-pressed" placeholder="Node đích (Tra hỏi đủ 100%)" style="margin-top: 5px;">
-                <input type="text" id="edit-ce-fail-ev" placeholder="Node Phạt chung (Khi trình SAI bằng chứng)" style="margin-top: 5px; border: 1px solid #f1c40f;">
-            </div>
-
-            <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px;">
-                <small><b>3. Thêm lời khai (Dùng trong Node Tra hỏi):</b></small>
-                <input type="text" id="edit-ce-add-new" placeholder="ID Lời khai mới (VD: k4)" style="margin-top: 5px;">
-                <input type="text" id="edit-ce-add-after" placeholder="Chèn sau ID (VD: k2)" style="margin-top: 5px;">
-            </div>
+            <input type="text" id="edit-ce-setup" placeholder="2. Vòng lặp: DS Lời khai (VD: k1,k2)" style="margin-top: 10px;">
+            <input type="text" id="edit-ce-hint" placeholder="Node Gợi ý (Khi lướt quá vòng)" style="margin-top: 5px;">
+            <input type="text" id="edit-ce-all-pressed" placeholder="Node đích (Tra hỏi đủ 100%)" style="margin-top: 5px;">
+            <input type="text" id="edit-ce-fail-ev" placeholder="Node Phạt chung (Khi trình SAI đồ)" style="margin-top: 5px; border: 1px solid #f1c40f;">
+            
+            <input type="text" id="edit-ce-add-new" placeholder="3. Thêm: ID Lời khai mới (VD: k4)" style="margin-top: 10px;">
+            <input type="text" id="edit-ce-add-after" placeholder="Chèn sau ID (VD: k2)" style="margin-top: 5px;">
         </div>
 
         <div class="input-group evidence-box">
             <label>🔎 Bằng chứng & Trắc nghiệm:</label>
-            <input type="text" id="edit-correct-ev" placeholder="Yêu cầu ID Bằng chứng (VD: ev_1)">
+            <input type="text" id="edit-correct-ev" placeholder="Yêu cầu ID Bằng chứng đúng">
             <div style="display:flex; gap:5px; margin-top:5px;">
                 <input type="text" id="edit-ev-pass" placeholder="Node ĐÚNG">
-                <input type="text" id="edit-ev-fail" placeholder="Node SAI riêng (Nếu cần)">
+                <input type="text" id="edit-ev-fail" placeholder="Node SAI riêng">
             </div>
             
-            <input type="text" id="edit-add-ev-id" placeholder="Thu thập: ID Bằng chứng mới" style="margin-top: 15px;">
+            <input type="text" id="edit-add-ev-id" placeholder="Thu thập: ID Bằng chứng mới" style="margin-top: 10px;">
             <input type="text" id="edit-add-ev-name" placeholder="Tên Bằng chứng mới" style="margin-top: 5px;">
             <input type="text" id="edit-add-ev-desc" placeholder="Mô tả..." style="margin-top: 5px;">
             <input type="text" id="edit-add-ev-img" placeholder="URL Ảnh" style="margin-top: 5px;">
 
-            <div id="choices-container" style="margin-top: 15px;"></div>
-            <button type="button" onclick="addChoiceField()" style="background: #f39c12; margin-top: 5px;">+ Thêm đáp án (Branching)</button>
+            <div id="choices-container" style="margin-top: 10px;"></div>
+            <button type="button" onclick="addChoiceField()" style="background: #f39c12; margin-top: 5px;">+ Thêm đáp án</button>
         </div>
         
         <button id="btn-add-node" onclick="addNewNode()" style="background: #e74c3c; font-size: 1.1rem; padding: 15px;">THÊM PHÂN CẢNH</button>
-        <button id="btn-export-json" onclick="exportData()">💾 Xuất File Kịch Bản (JSON)</button>
+        <button id="btn-export-json" onclick="exportData()">💾 Xuất Kịch Bản (JSON)</button>
     </div>
 
     <div id="workspace">
         <div id="tabs-bar">
-            <button class="tab-btn active" onclick="switchTab('player')">🎮 Trình Phát (Game)</button>
-            <button class="tab-btn" onclick="switchTab('flowchart')">🕸️ Sơ Đồ (Scene)</button>
+            <button class="tab-btn active" onclick="switchTab('player')">🎮 Trình Phát</button>
+            <button class="tab-btn" onclick="switchTab('flowchart')">🕸️ Node Editor</button>
         </div>
 
         <div id="player-view" class="view-content active-view">
@@ -85,6 +110,7 @@
                 <div id="character-layer"><img id="character-sprite" src="" alt=""></div>
                 <div id="fx-layer"></div>
                 
+                <div id="penalty-container"><div id="penalty-bar"></div></div>
                 <div id="ce-ui" style="display: none;">
                     <div id="ce-arrow-left" class="ce-arrow" onclick="goPrevTestimony()">&#10094;</div>
                     <div id="ce-arrow-right" class="ce-arrow" onclick="goNextTestimony()">&#10095;</div>
@@ -92,40 +118,73 @@
                 </div>
 
                 <div id="choice-container" style="display: none;"></div>
-                
-                <div id="evidence-added-popup" style="display: none;">
-                    <div class="ev-added-content">
-                        <div class="ev-added-left"><img id="ev-added-img" src="" alt=""></div>
-                        <div class="ev-added-right">
-                            <h3 id="ev-added-name">Tên bằng chứng</h3>
-                            <p id="ev-added-desc">Mô tả</p>
-                        </div>
-                    </div>
-                    <div class="ev-added-banner">Đã thêm vào Hồ sơ vụ án</div>
-                </div>
-
                 <div id="inventory-ui" style="display: none;">
                     <div id="evidence-info">
-                        <h3 id="ev-name">Tên Bằng Chứng</h3>
-                        <p id="ev-desc">Mô tả...</p>
+                        <h3 id="ev-name">Tên Bằng Chứng</h3><p id="ev-desc">Mô tả...</p>
                     </div>
                     <div id="evidence-grid"></div>
                     <div class="hint-text">Nhấn [ E ] để Trình bằng chứng</div>
                 </div>
                 
+                <div id="evidence-added-popup" style="display: none;">
+                    <div class="ev-added-content">
+                        <div class="ev-added-left"><img id="ev-added-img" src="" alt=""></div>
+                        <div class="ev-added-right"><h3 id="ev-added-name">Tên</h3><p id="ev-added-desc">Mô tả</p></div>
+                    </div>
+                    <div class="ev-added-banner">Đã thêm vào Hồ sơ vụ án</div>
+                </div>
+
                 <div id="dialogue-box">
                     <div id="action-hints" style="position: absolute; top: -30px; right: 0; display: none;">
-                        <span class="hint-pill">Nhấn [ Q ] Tra hỏi</span>
-                        <span class="hint-pill">Nhấn [ E ] Bằng chứng</span>
+                        <span class="hint-pill">Nhấn [ Q ] Tra hỏi</span><span class="hint-pill">Nhấn [ E ] Bằng chứng</span>
                     </div>
-
                     <h3 id="character-name">Hệ thống</h3>
                     <p id="dialogue-text">Hãy tạo phân cảnh đầu tiên...</p>
                 </div>
             </div>
         </div>
 
-        <div id="flowchart-view" class="view-content"><div id="canvas-area"></div></div>
+        <div id="flowchart-view" class="view-content">
+            <div id="canvas-wrapper" style="width: 100%; height: 100%; overflow: auto; position: relative; background: #202020; cursor: grab;">
+                <div id="canvas-area" style="position: relative; width: 4000px; height: 4000px; transform-origin: top left;">
+                    <svg id="svg-lines" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none; z-index: 1;">
+                        <path id="temp-link-line" stroke="#f1c40f" stroke-width="4" fill="none" stroke-dasharray="8" style="display:none; pointer-events:none;" />
+                    </svg>
+                    <div id="nodes-layer" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 2;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#f39c12;">Sửa Thông Tin Phân Cảnh</h3>
+            <input type="hidden" id="modal-node-id">
+            <label>Tên nhân vật:</label>
+            <input type="text" id="modal-char-name" class="modal-input">
+            <label>Nội dung thoại:</label>
+            <textarea id="modal-dialogue" rows="4" class="modal-input"></textarea>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <div style="flex:1;">
+                    <label>VFX Nền:</label>
+                    <select id="modal-bg-vfx" class="modal-input">
+                        <option value="">Không có</option><option value="fx-sepia">Hoài niệm</option>
+                        <option value="fx-grayscale">Trắng đen</option><option value="fx-blur">Mờ ảo</option><option value="fx-invert">Kinh dị</option>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label>VFX Nhân vật:</label>
+                    <select id="modal-char-vfx" class="modal-input">
+                        <option value="">Không có</option><option value="fx-sepia">Hoài niệm</option>
+                        <option value="fx-grayscale">Trắng đen</option><option value="fx-blur">Mờ ảo</option><option value="fx-invert">Kinh dị</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="saveModalEdit()" style="background:#27ae60; flex:1;">Lưu Thay Đổi</button>
+                <button onclick="closeModal()" style="background:#e74c3c; flex:1;">Hủy</button>
+            </div>
+        </div>
     </div>
 
     <script src="engine.js"></script>

@@ -1,16 +1,13 @@
-/* --- CHỮA BỆNH GÃY LAYOUT --- */
 body {
     margin: 0; padding: 0;
     background-color: #1a1a1a;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    overflow: hidden; 
-    display: flex; /* Bắt buộc phải có để chia 2 cột */
+    overflow: hidden; display: flex; 
 }
 
-/* --- BẢNG ĐIỀU KHIỂN BÊN TRÁI --- */
+/* --- EDITOR PANEL --- */
 #editor-panel {
-    width: 420px; 
-    min-width: 420px; /* Khóa cứng chiều rộng, không cho thu hẹp */
+    width: 420px; min-width: 420px;
     background-color: #2c3e50; color: #ecf0f1;
     padding: 20px; height: 100vh; overflow-y: auto;
     box-sizing: border-box; box-shadow: 2px 0 10px rgba(0,0,0,0.5); z-index: 100;
@@ -21,24 +18,20 @@ body {
     width: 100%; padding: 10px; border-radius: 6px; border: none; box-sizing: border-box;
     background: #34495e; color: white;
 }
-.input-group input::placeholder, .input-group textarea::placeholder { color: #95a5a6; }
-
 button {
     width: 100%; padding: 12px; margin-bottom: 10px; background-color: #3498db; color: white; 
     border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s;
 }
 button:hover { background-color: #2980b9; }
 
-/* MODULE COLORS */
 .ce-box { background: #d35400; padding: 15px; border-radius: 8px; }
-.ce-box label { color: white; margin-bottom: 10px; font-size: 1rem; }
 .evidence-box { background: #27ae60; padding: 15px; border-radius: 8px; margin-top: 15px;}
-.evidence-box label { color: white; margin-bottom: 10px; font-size: 1rem; }
+.hp-box { background: #8e44ad; padding: 15px; border-radius: 8px; margin-top: 15px;}
 .choice-input-row { display: flex; gap: 5px; margin-bottom: 5px; }
 .choice-input-row input { flex-grow: 1; }
 .btn-remove-choice { width: auto !important; background: #e74c3c !important; padding: 10px !important; margin: 0 !important; }
 
-/* --- KHU VỰC WORKSPACE BÊN PHẢI --- */
+/* --- WORKSPACE LAYOUT --- */
 #workspace { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; position: relative;}
 #tabs-bar { display: flex; background: #2c3e50; padding: 0 10px; border-bottom: 2px solid #000; }
 .tab-btn { width: auto; margin: 0; margin-right: 5px; border-radius: 8px 8px 0 0; background: #34495e; color: #95a5a6; padding: 10px 20px; font-weight: normal; }
@@ -46,18 +39,27 @@ button:hover { background-color: #2980b9; }
 .view-content { display: none; flex-grow: 1; position: relative; }
 .view-content.active-view { display: flex; flex-direction: column; }
 
-/* --- PLAYER VIEW --- */
+/* --- STAGE LAYER MANAGEMENT --- */
 #story-container { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
 #background-layer, #character-layer, #fx-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;}
-#background-layer { background-size: cover; background-position: center; z-index: 1; }
-#character-layer { z-index: 2; display: flex; justify-content: center; align-items: flex-end; }
-#character-sprite { height: 80vh; object-fit: contain; display: none; }
 
+#background-layer { background-size: cover; background-position: center; z-index: 1; transition: filter 0.3s ease; }
+#character-layer { z-index: 2; display: flex; justify-content: center; align-items: flex-end; }
+#character-sprite { height: 85vh; object-fit: contain; display: none; transition: filter 0.3s ease; }
+#fx-layer { z-index: 4; }
+
+/* --- ĐỔI MỚI: BỘ LỌC BẰNG CSS FILTER TRỰC TIẾP --- */
+.fx-sepia { filter: sepia(0.8) !important; }
+.fx-grayscale { filter: grayscale(1) !important; }
+.fx-blur { filter: blur(6px) !important; }
+.fx-invert { filter: invert(1) !important; }
+
+/* --- NÚT SOẠN THẢO DIỄN BIẾN --- */
 #dialogue-box { position: relative; z-index: 10; width: 80%; max-width: 900px; background: rgba(255, 255, 255, 0.95); margin-bottom: 40px; padding: 24px 32px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); border: 2px solid #e0e0e0; }
 #character-name { margin: 0 0 10px 0; font-size: 1.4rem; color: #333; font-weight: 700; text-transform: uppercase; }
 #dialogue-text { margin: 0; font-size: 1.2rem; color: #444; line-height: 1.6; min-height: 3.8rem; }
 
-/* --- CROSS-EXAMINATION UI --- */
+/* --- CROSS-EXAMINATION NAV --- */
 #ce-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 15; pointer-events: none; }
 .ce-arrow { position: absolute; top: 50%; transform: translateY(-50%); font-size: 4rem; color: rgba(255, 255, 255, 0.7); cursor: pointer; pointer-events: auto; transition: 0.2s; text-shadow: 0 0 10px #f39c12; font-weight: bold; }
 .ce-arrow:hover { color: #f1c40f; text-shadow: 0 0 20px #f1c40f; transform: translateY(-50%) scale(1.1); }
@@ -65,10 +67,10 @@ button:hover { background-color: #2980b9; }
 #ce-arrow-right { right: 40px; }
 #ce-dots-container { position: absolute; bottom: 200px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: auto; }
 .ce-dot { width: 14px; height: 14px; border-radius: 50%; background: transparent; border: 2px solid #bdc3c7; box-shadow: 0 0 5px rgba(0,0,0,0.8); }
-.ce-dot.active { background: #2ecc71; border-color: #fff; box-shadow: 0 0 10px #2ecc71, 0 0 5px rgba(0,0,0,0.8); }
+.ce-dot.active { background: #2ecc71; border-color: #fff; box-shadow: 0 0 10px #2ecc71; }
 .hint-pill { background: #e74c3c; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.4); margin-left: 10px; }
 
-/* --- TÚI ĐỒ & BẰNG CHỨNG --- */
+/* --- TÚI ĐỒ & CHỌN ĐÁN --- */
 #choice-container { position: absolute; bottom: 160px; width: 80%; max-width: 800px; z-index: 20; display: flex; flex-direction: column; gap: 12px; align-items: center; }
 .choice-btn { background: rgba(41, 128, 185, 0.95); color: white; border: 2px solid #fff; padding: 15px 30px; font-size: 1.2rem; border-radius: 8px; cursor: pointer; width: 80%; }
 #inventory-ui { position: absolute; top: 10%; width: 80%; max-width: 800px; background: rgba(236, 240, 241, 0.95); border: 4px solid #3498db; border-radius: 8px; z-index: 30; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -96,6 +98,62 @@ button:hover { background-color: #2980b9; }
 #canvas-area { display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-start; }
 .flow-node { background: #252526; border: 2px solid #007acc; border-radius: 8px; padding: 15px; width: 250px; color: #d4d4d4; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
 .flow-choice { background: #333; padding: 5px 10px; margin-top: 5px; border-radius: 4px; border-left: 3px solid #f39c12; display: flex; justify-content: space-between; }
-.fx-overlay { pointer-events: none; }
-.fx-sepia { backdrop-filter: sepia(0.8); } .fx-grayscale { backdrop-filter: grayscale(1); }
-.fx-blur { backdrop-filter: blur(5px); } .fx-invert { backdrop-filter: invert(1); }
+
+/* --- THANH NĂNG LỰC SKEW --- */
+#penalty-container {
+    position: absolute; top: 20px; right: -420px; 
+    transition: right 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.15); 
+    z-index: 40; background: rgba(0, 0, 0, 0.6); padding: 8px; border: 2px solid #ecf0f1; border-radius: 4px;
+}
+#penalty-container.show { right: 20px; }
+#penalty-bar { display: flex; gap: 4px; }
+.hp-seg { width: 24px; height: 18px; background: rgba(255, 255, 255, 0.15); transform: skewX(-20deg); border: 1px solid rgba(255, 255, 255, 0.3); }
+.hp-seg.active { background: #3498db; box-shadow: 0 0 8px #3498db; border-color: #2980b9; }
+.hp-seg.throbbing { animation: throb 0.5s infinite alternate; }
+@keyframes throb {
+    0% { background: #3498db; box-shadow: 0 0 8px #3498db; }
+    100% { background: #8b0000; box-shadow: 0 0 12px #ff0000; border-color: #ff0000; }
+}
+.hp-seg.damage { animation: dmgFlash 0.6s forwards; }
+@keyframes dmgFlash {
+    0% { background: #ff0000; box-shadow: 0 0 20px #ff0000; transform: skewX(-20deg) scale(1.15); }
+    100% { background: rgba(255, 255, 255, 0.15); box-shadow: none; transform: skewX(-20deg) scale(1); }
+}
+/* --- TRỰC QUAN NODE EDITOR --- */
+.visual-node {
+    position: absolute; background: rgba(37, 37, 38, 0.95); border: 2px solid #569cd6; border-radius: 8px;
+    width: 280px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); color: #d4d4d4; font-size: 0.9rem;
+    backdrop-filter: blur(10px); z-index: 10;
+}
+.visual-node-header {
+    background: #007acc; padding: 8px 12px; border-radius: 6px 6px 0 0; cursor: grab;
+    font-weight: bold; color: white; display: flex; justify-content: space-between; align-items: center;
+}
+.visual-node-header:active { cursor: grabbing; }
+.visual-node-body { padding: 12px; }
+.visual-node .dialogue-preview { font-style: italic; color: #ce9178; margin: 10px 0; border-left: 2px solid #ce9178; padding-left: 5px; }
+
+/* Các nút công cụ trên Node */
+.node-tools { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap;}
+.tool-btn { flex: 1; padding: 5px; font-size: 0.8rem; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; min-width: 45%; }
+.btn-play { background: #27ae60; } .btn-edit { background: #f39c12; }
+.btn-break { background: #8e44ad; } .btn-delete { background: #e74c3c; width: 100%; margin-top: 5px; }
+
+/* CỔNG KẾT NỐI (PORTS) */
+.port-container { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px; padding-top: 5px; border-top: 1px dashed #555; }
+.port-out {
+    width: 16px; height: 16px; background: #f39c12; border: 2px solid #fff; border-radius: 50%;
+    cursor: crosshair; transition: 0.2s; box-shadow: 0 0 5px #000;
+}
+.port-out:hover { transform: scale(1.3); background: #e67e22; }
+.port-out.linear { background: #3498db; }
+
+/* SVG Lines (Dây nối) */
+.node-connection { fill: none; stroke: #569cd6; stroke-width: 3; stroke-dasharray: 8; animation: dash 30s linear infinite; opacity: 0.8; }
+.node-connection.choice { stroke: #f39c12; }
+@keyframes dash { to { stroke-dashoffset: 1000; } }
+
+/* --- MODAL EDIT CƠ BẢN --- */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; display: flex; justify-content: center; align-items: center; }
+.modal-content { background: #2c3e50; padding: 25px; border-radius: 8px; width: 90%; max-width: 500px; box-shadow: 0 0 30px rgba(0,0,0,0.5); border: 1px solid #34495e; color: white; }
+.modal-input { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px; background: #34495e; color: white; border: none; border-radius: 4px; box-sizing: border-box; }
