@@ -2,172 +2,521 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visual & Audio Layer Setup</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .setup-container { display: flex; gap: 20px; padding: 20px; color: white; }
-        .preview-box { 
-            flex: 1; border: 2px dashed #555; position: relative; 
+        .preview-box {
+            flex: 1; border: 2px dashed #555; position: relative;
             height: 550px; background: #000; overflow: hidden; border-radius: 8px;
         }
-        .controls-box { width: 420px; background: #2c3e50; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .effect-select { width: 100%; padding: 10px; margin: 8px 0 15px 0; background: #34495e; color: white; border: none; border-radius: 4px; }
-        button { width: 100%; padding: 12px; margin-top: 10px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.2s; }
+        .controls-box {
+            width: 460px; background: #2c3e50; padding: 20px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-height: calc(100vh - 40px); overflow-y: auto;
+        }
+        .effect-select, .text-input, .text-area, .api-key-input {
+            width: 100%; padding: 10px; margin: 8px 0 0 0;
+            background: #34495e; color: white; border: none; border-radius: 4px; box-sizing: border-box;
+        }
+        .text-area { min-height: 88px; resize: vertical; }
+        button {
+            width: 100%; padding: 12px; margin-top: 10px; cursor: pointer; border: none;
+            border-radius: 4px; color: white; font-weight: bold; transition: 0.2s;
+        }
         button:hover { filter: brightness(1.1); }
-        .input-group { margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; }
-        .input-group label { font-weight: bold; font-size: 0.95rem; color: #ecf0f1; }
+        button:disabled { opacity: 0.6; cursor: wait; filter: none; }
+        .input-group { margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; }
+        .input-group label { font-weight: bold; font-size: 0.95rem; color: #ecf0f1; display: block; }
+        .helper-text { margin-top: 6px; font-size: 0.82rem; color: #bdc3c7; line-height: 1.45; }
+        .prompt-grid { display: grid; gap: 10px; margin-top: 10px; }
+        .status-text { margin-top: 8px; min-height: 18px; font-size: 0.84rem; color: #f1c40f; }
+        .preview-tag {
+            position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.72);
+            padding: 8px 12px; z-index: 10; border-radius: 4px; font-size: 0.85rem;
+        }
+        .asset-chip {
+            display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 999px;
+            background: rgba(52, 152, 219, 0.2); color: #d6eaf8; font-size: 0.78rem;
+        }
     </style>
 </head>
 <body style="display: block; overflow: auto; background: #1a1a1a; font-family: 'Segoe UI', sans-serif;">
     <div class="setup-container">
         <div class="controls-box">
-            <h2>Thiết lập Lớp Đồ Họa & VFX</h2>
-            <p id="editing-node-info" style="color: #f39c12; font-weight: bold; margin-bottom: 20px;">Đang sửa Node: None</p>
+            <h2>Thiet lap Lop Do hoa & VFX</h2>
+            <p id="editing-node-info" style="color: #f39c12; font-weight: bold; margin-bottom: 20px;">Dang sua Node: None</p>
+
+            <div class="input-group" style="border-left: 4px solid #16a085; padding-left: 10px;">
+                <label>Hugging Face token</label>
+                <input type="password" id="hf-api-key" class="api-key-input" placeholder="hf_...">
+                <div class="helper-text">
+                    Token duoc luu trong localStorage trinh duyet nay de tao anh bang free tier cua Hugging Face.
+                </div>
+            </div>
 
             <div class="input-group" style="border-left: 4px solid #3498db; padding-left: 10px;">
-                <label>1. Ảnh Nền (Background):</label>
-                <input type="file" id="setup-bg" accept="image/*" onchange="previewVisuals()" style="margin-top:5px;">
-                
-                <label style="display:block; margin-top:10px;">Hiệu ứng VFX Nền:</label>
+                <label>1. Anh nen courtroom_bg</label>
+                <textarea id="setup-bg-prompt" class="text-area" placeholder="VD: Mot phong xu an u am, phong cach anime" oninput="syncPromptDraft('bg')"></textarea>
+                <div class="prompt-grid">
+                    <button type="button" id="btn-generate-bg" onclick="generateImageFor('bg')" style="background: #2980b9;">Tao background bang AI</button>
+                    <input type="file" id="setup-bg" accept="image/*" onchange="handleManualAsset('bg')" class="text-input">
+                </div>
+                <span id="bg-asset-chip" class="asset-chip" style="display:none;"></span>
+
+                <label style="display:block; margin-top:12px;">Hieu ung VFX nen</label>
                 <select id="setup-bg-vfx" class="effect-select" onchange="previewVisuals()">
-                    <option value="">Không có (Bình thường)</option>
-                    <option value="fx-sepia">Hoài niệm (Sepia)</option>
-                    <option value="fx-grayscale">Trắng đen (Grayscale)</option>
-                    <option value="fx-blur">Mờ ảo (Blur)</option>
-                    <option value="fx-invert">Kinh dị (Invert)</option>
+                    <option value="">Khong co (Binh thuong)</option>
+                    <option value="fx-sepia">Hoai niem (Sepia)</option>
+                    <option value="fx-grayscale">Trang den (Grayscale)</option>
+                    <option value="fx-blur">Mo ao (Blur)</option>
+                    <option value="fx-invert">Kinh di (Invert)</option>
                 </select>
+                <div id="bg-status" class="status-text"></div>
             </div>
 
             <div class="input-group" style="border-left: 4px solid #9b59b6; padding-left: 10px;">
-                <label>2. Ảnh Nhân Vật (Character PNG):</label>
-                <input type="file" id="setup-char-img" accept="image/*" onchange="previewVisuals()" style="margin-top:5px;">
-                
-                <label style="display:block; margin-top:10px;">Hiệu ứng VFX Nhân Vật:</label>
+                <label>2. Anh nhan vat</label>
+                <textarea id="setup-char-prompt" class="text-area" placeholder="VD: Luat su tre, dang chi tay, phong cach anime, PNG nhan vat toan than" oninput="syncPromptDraft('char')"></textarea>
+                <div class="prompt-grid">
+                    <button type="button" id="btn-generate-char" onclick="generateImageFor('char')" style="background: #8e44ad;">Tao avatar bang AI</button>
+                    <input type="file" id="setup-char-img" accept="image/*" onchange="handleManualAsset('char')" class="text-input">
+                </div>
+                <span id="char-asset-chip" class="asset-chip" style="display:none;"></span>
+
+                <label style="display:block; margin-top:12px;">Hieu ung VFX nhan vat</label>
                 <select id="setup-char-vfx" class="effect-select" onchange="previewVisuals()">
-                    <option value="">Không có (Bình thường)</option>
-                    <option value="fx-sepia">Hoài niệm (Sepia)</option>
-                    <option value="fx-grayscale">Trắng đen (Grayscale)</option>
-                    <option value="fx-blur">Mờ ảo (Blur)</option>
-                    <option value="fx-invert">Kinh dị (Invert)</option>
+                    <option value="">Khong co (Binh thuong)</option>
+                    <option value="fx-sepia">Hoai niem (Sepia)</option>
+                    <option value="fx-grayscale">Trang den (Grayscale)</option>
+                    <option value="fx-blur">Mo ao (Blur)</option>
+                    <option value="fx-invert">Kinh di (Invert)</option>
                 </select>
+                <div id="char-status" class="status-text"></div>
             </div>
 
-            <button onclick="saveAndReturn()" style="background: #27ae60;">✅ LƯU THIẾT LẬP TÁCH LỚP</button>
-            <button onclick="window.location.href='index.html'" style="background: #e74c3c;">Hủy bỏ</button>
+            <button onclick="saveAndReturn()" style="background: #27ae60;">Luu thiet lap</button>
+            <button onclick="window.location.href='index.html'" style="background: #e74c3c;">Huy bo</button>
         </div>
 
         <div class="preview-box" id="preview-screen">
-            <img id="prev-bg" style="width:100%; height:100%; object-fit: cover; position:absolute; top:0; left:0; z-index: 1;">
-            <img id="prev-char" style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:85%; z-index: 3; display:none;">
-            
-            <div style="position:absolute; top:20px; left:20px; color:white; background:rgba(0,0,0,0.7); padding:8px 12px; z-index: 10; border-radius: 4px; font-size: 0.85rem;">
-                👁️ Chế độ Xem trước Tách lớp (Preview View)
-            </div>
+            <img id="prev-bg" alt="Background preview" style="width:100%; height:100%; object-fit: cover; position:absolute; top:0; left:0; z-index: 1;">
+            <img id="prev-char" alt="Character preview" style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:85%; z-index: 3; display:none;">
+            <div class="preview-tag">Preview view</div>
         </div>
     </div>
 
-    <script>
-        let editingNodeId = localStorage.getItem('editingNodeId');
+    <script type="module">
+        import { InferenceClient } from 'https://cdn.jsdelivr.net/npm/@huggingface/inference@4.13.15/+esm';
+
+        const editingNodeId = localStorage.getItem('editingNodeId');
+        const EDITOR_DRAFT_KEY = 'editorDraft';
+        const STORY_CACHE_KEY = 'storyData';
+        const storedApiKey = localStorage.getItem('hfApiKey') || '';
         let storyData = [];
-        try {
-            storyData = JSON.parse(localStorage.getItem('storyData') || '[]');
-        } catch(e) { storyData = []; }
+        let nodeIndex = -1;
+        let node = null;
+        let activeAssets = {
+            bg: { url: '', source: 'empty', prompt: '' },
+            char: { url: '', source: 'empty', prompt: '' }
+        };
+        const IMAGE_MODEL_CANDIDATES = {
+            bg: [
+                'black-forest-labs/FLUX.1-schnell',
+                'stabilityai/stable-diffusion-xl-base-1.0'
+            ],
+            char: [
+                'black-forest-labs/FLUX.1-schnell',
+                'stabilityai/stable-diffusion-xl-base-1.0'
+            ]
+        };
 
-        let nodeIndex = storyData.findIndex(n => n.id === editingNodeId);
-        let node = nodeIndex !== -1 ? storyData[nodeIndex] : null;
+        document.getElementById('editing-node-info').innerText = 'Dang sua Node: ' + (editingNodeId || 'Chua xac dinh');
+        document.getElementById('hf-api-key').value = storedApiKey;
+        document.getElementById('hf-api-key').addEventListener('change', (event) => {
+            localStorage.setItem('hfApiKey', event.target.value.trim());
+        });
 
-        document.getElementById('editing-node-info').innerText = "Đang sửa Node: " + (editingNodeId || "Chưa xác định");
+        initializeEditor();
 
-        // Khởi tạo hiển thị dựa trên dữ liệu cũ nếu có
-        if (node) {
-            if (node.visualConfig) {
-                document.getElementById('setup-bg-vfx').value = node.visualConfig.bgVfx || "";
-                document.getElementById('setup-char-vfx').value = node.visualConfig.charVfx || "";
-                if (node.visualConfig.bgUrl) document.getElementById('prev-bg').src = node.visualConfig.bgUrl;
-                if (node.visualConfig.charUrl || node.characterSprite) {
-                    const charSrc = node.visualConfig.charUrl || node.characterSprite;
-                    const prevChar = document.getElementById('prev-char');
-                    prevChar.src = charSrc;
-                    prevChar.style.display = "block";
+        async function initializeEditor() {
+            storyData = await loadStoryData();
+            nodeIndex = storyData.findIndex((item) => item.id === editingNodeId);
+            node = nodeIndex !== -1 ? storyData[nodeIndex] : null;
+            initializeFromNode();
+        }
+
+        async function loadStoryData() {
+            try {
+                if (window.location.protocol !== 'file:') {
+                    const response = await fetch('story_data.json', { cache: 'no-store' });
+                    if (response.ok) {
+                        const fileData = await response.json();
+                        const scenes = Array.isArray(fileData) ? fileData : (Array.isArray(fileData.scenes) ? fileData.scenes : []);
+                        return scenes;
+                    }
                 }
-                previewVisuals();
-            } else if (node.characterSprite) {
-                const prevChar = document.getElementById('prev-char');
-                prevChar.src = node.characterSprite;
-                prevChar.style.display = "block";
+            } catch (error) {
+                console.warn('Khong the nap story_data.json trong visual editor:', error);
             }
+
+            try {
+                const storedStory = JSON.parse(localStorage.getItem(STORY_CACHE_KEY) || '[]');
+                return Array.isArray(storedStory) ? storedStory : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function initializeFromNode() {
+            if (!node) {
+                const editorDraft = loadEditorDraft();
+                const draftVisualConfig = editorDraft.visualConfig || {};
+                document.getElementById('setup-bg-vfx').value = draftVisualConfig.bgVfx || editorDraft.bgVfx || '';
+                document.getElementById('setup-char-vfx').value = draftVisualConfig.charVfx || editorDraft.charVfx || '';
+                document.getElementById('setup-bg-prompt').value = draftVisualConfig.bgPrompt || '';
+                document.getElementById('setup-char-prompt').value = draftVisualConfig.charPrompt || '';
+
+                if (draftVisualConfig.bgUrl) {
+                    activeAssets.bg = {
+                        url: draftVisualConfig.bgUrl,
+                        source: draftVisualConfig.bgSource || 'existing',
+                        prompt: draftVisualConfig.bgPrompt || ''
+                    };
+                }
+
+                if (draftVisualConfig.charUrl) {
+                    activeAssets.char = {
+                        url: draftVisualConfig.charUrl,
+                        source: draftVisualConfig.charSource || 'existing',
+                        prompt: draftVisualConfig.charPrompt || ''
+                    };
+                }
+
+                renderAssetChip('bg');
+                renderAssetChip('char');
+                previewVisuals();
+                return;
+            }
+
+            const visualConfig = node.visualConfig || {};
+            const existingBgUrl = visualConfig.bgUrl || node.background || '';
+            const existingCharUrl = visualConfig.charUrl || node.characterSprite || '';
+
+            document.getElementById('setup-bg-vfx').value = visualConfig.bgVfx || '';
+            document.getElementById('setup-char-vfx').value = visualConfig.charVfx || '';
+            document.getElementById('setup-bg-prompt').value = visualConfig.bgPrompt || '';
+            document.getElementById('setup-char-prompt').value = visualConfig.charPrompt || '';
+
+            if (existingBgUrl) {
+                activeAssets.bg = {
+                    url: existingBgUrl,
+                    source: visualConfig.bgSource || 'existing',
+                    prompt: visualConfig.bgPrompt || ''
+                };
+            }
+
+            if (existingCharUrl) {
+                activeAssets.char = {
+                    url: existingCharUrl,
+                    source: visualConfig.charSource || 'existing',
+                    prompt: visualConfig.charPrompt || ''
+                };
+            }
+
+            renderAssetChip('bg');
+            renderAssetChip('char');
+            previewVisuals();
+        }
+
+        function syncPromptDraft(kind) {
+            const promptValue = document.getElementById(kind === 'bg' ? 'setup-bg-prompt' : 'setup-char-prompt').value.trim();
+            activeAssets[kind].prompt = promptValue;
+        }
+
+        function renderAssetChip(kind) {
+            const chip = document.getElementById(kind === 'bg' ? 'bg-asset-chip' : 'char-asset-chip');
+            const asset = activeAssets[kind];
+            if (!asset.url) {
+                chip.style.display = 'none';
+                chip.textContent = '';
+                return;
+            }
+
+            const labelMap = {
+                ai: 'Anh AI',
+                upload: 'Anh upload',
+                existing: 'Anh hien co'
+            };
+            chip.style.display = 'inline-block';
+            chip.textContent = labelMap[asset.source] || 'Anh da chon';
+        }
+
+        function setStatus(kind, message) {
+            document.getElementById(kind === 'bg' ? 'bg-status' : 'char-status').innerText = message || '';
         }
 
         function previewVisuals() {
-            const bgVfx = document.getElementById('setup-bg-vfx').value;
-            const charVfx = document.getElementById('setup-char-vfx').value;
-            
-            const bgFile = document.getElementById('setup-bg').files[0];
-            const charFile = document.getElementById('setup-char-img').files[0];
-            
             const prevBg = document.getElementById('prev-bg');
             const prevChar = document.getElementById('prev-char');
+            const bgVfx = document.getElementById('setup-bg-vfx').value;
+            const charVfx = document.getElementById('setup-char-vfx').value;
 
-            // Áp dụng class bộ lọc filter trực tiếp lên từng đối tượng hình ảnh
             prevBg.className = bgVfx;
             prevChar.className = charVfx;
 
-            if (bgFile) {
-                prevBg.src = URL.createObjectURL(bgFile);
-            }
-            if (charFile) {
-                prevChar.src = URL.createObjectURL(charFile);
-                prevChar.style.display = "block";
+            prevBg.src = activeAssets.bg.url || '';
+            if (activeAssets.char.url) {
+                prevChar.src = activeAssets.char.url;
+                prevChar.style.display = 'block';
+            } else {
+                prevChar.removeAttribute('src');
+                prevChar.style.display = 'none';
             }
         }
 
-        function saveAndReturn() {
+        function handleManualAsset(kind) {
+            const input = document.getElementById(kind === 'bg' ? 'setup-bg' : 'setup-char-img');
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const normalizedUrl = kind === 'char'
+                        ? await convertImageToPngDataUrl(reader.result)
+                        : reader.result;
+
+                    activeAssets[kind] = {
+                        url: normalizedUrl,
+                        source: 'upload',
+                        prompt: document.getElementById(kind === 'bg' ? 'setup-bg-prompt' : 'setup-char-prompt').value.trim()
+                    };
+                    renderAssetChip(kind);
+                    setStatus(kind, kind === 'char' ? 'Da nap avatar PNG vao khung preview.' : 'Da nap anh tai len vao khung preview.');
+                    previewVisuals();
+                } catch (error) {
+                    console.error('Upload normalization error:', error);
+                    setStatus(kind, 'Khong xu ly duoc file anh vua tai len.');
+                }
+            };
+            reader.onerror = () => {
+                setStatus(kind, 'Khong doc duoc file anh vua tai len.');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadImageElement(sourceUrl) {
+            return new Promise((resolve, reject) => {
+                const image = new Image();
+                image.onload = () => resolve(image);
+                image.onerror = () => reject(new Error('Khong tai duoc anh de chuyen doi.'));
+                image.src = sourceUrl;
+            });
+        }
+
+        async function convertImageToPngDataUrl(sourceUrl) {
+            const image = await loadImageElement(sourceUrl);
+            const canvas = document.createElement('canvas');
+            canvas.width = image.naturalWidth || image.width;
+            canvas.height = image.naturalHeight || image.height;
+            const context = canvas.getContext('2d');
+            context.drawImage(image, 0, 0);
+            return canvas.toDataURL('image/png');
+        }
+
+        async function generateImageFor(kind) {
+            const promptFieldId = kind === 'bg' ? 'setup-bg-prompt' : 'setup-char-prompt';
+            const prompt = document.getElementById(promptFieldId).value.trim();
+            const apiKey = document.getElementById('hf-api-key').value.trim();
+            const button = document.getElementById(kind === 'bg' ? 'btn-generate-bg' : 'btn-generate-char');
+
+            if (!prompt) {
+                setStatus(kind, 'Hay nhap prompt mo ta truoc khi tao anh.');
+                return;
+            }
+
+            if (!apiKey) {
+                setStatus(kind, 'Can nhap Hugging Face token de goi Text-to-Image.');
+                return;
+            }
+
+            localStorage.setItem('hfApiKey', apiKey);
+            button.disabled = true;
+            setStatus(kind, 'Dang tao anh AI...');
+
+            try {
+                const enhancedPrompt = kind === 'bg'
+                    ? prompt + '. High quality anime background for a courtroom visual novel scene, cinematic lighting, no text, no watermark.'
+                    : prompt + '. High quality anime character sprite PNG for a courtroom visual novel, full body, transparent background, centered subject, no text, no watermark.';
+                const client = new InferenceClient(apiKey);
+                const generationParameters = kind === 'bg'
+                    ? {
+                        width: 1536,
+                        height: 1024,
+                        guidance_scale: 7.5,
+                        num_inference_steps: 24
+                    }
+                    : {
+                        width: 1024,
+                        height: 1536,
+                        guidance_scale: 7.5,
+                        num_inference_steps: 24
+                    };
+                const modelCandidates = IMAGE_MODEL_CANDIDATES[kind];
+                let imageBlob = null;
+                let lastError = null;
+
+                for (const modelName of modelCandidates) {
+                    setStatus(kind, 'Dang tao anh AI voi model ' + modelName + ' ...');
+                    try {
+                        imageBlob = await client.textToImage({
+                            model: modelName,
+                            provider: 'hf-inference',
+                            inputs: enhancedPrompt,
+                            parameters: generationParameters
+                        });
+                        if (imageBlob && imageBlob.size) {
+                            setStatus(kind, 'Da tao anh bang model ' + modelName + '.');
+                            break;
+                        }
+                    } catch (modelError) {
+                        console.warn('Model failed:', modelName, modelError);
+                        lastError = modelError;
+                    }
+                }
+
+                if (!imageBlob || !imageBlob.size) {
+                    throw new Error(lastError && lastError.message ? lastError.message : 'Khong model nao tao duoc hinh anh.');
+                }
+
+                const objectUrl = URL.createObjectURL(imageBlob);
+                const normalizedUrl = kind === 'char'
+                    ? await convertImageToPngDataUrl(objectUrl)
+                    : objectUrl;
+                activeAssets[kind] = {
+                    url: normalizedUrl,
+                    source: 'ai',
+                    prompt: prompt
+                };
+
+                renderAssetChip(kind);
+                previewVisuals();
+                setStatus(kind, 'Da tao anh AI va dua vao preview.');
+            } catch (error) {
+                console.error('Image generation error:', error);
+                setStatus(kind, 'Loi tao anh: ' + error.message);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function buildStoryDocument(data) {
+            const scenes = data.map((scene) => {
+                const visualConfig = scene.visualConfig || {};
+                return {
+                    ...scene,
+                    background: visualConfig.bgUrl || scene.background || '',
+                    characterSprite: scene.characterSprite || visualConfig.charUrl || ''
+                };
+            });
+
+            return { scenes };
+        }
+
+        function loadEditorDraft() {
+            try {
+                return JSON.parse(localStorage.getItem(EDITOR_DRAFT_KEY) || 'null') || {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function saveEditorDraft(draft) {
+            localStorage.setItem(EDITOR_DRAFT_KEY, JSON.stringify(draft));
+        }
+
+        async function saveStoryDocumentToProject(documentData) {
+            if (window.location.protocol === 'file:') {
+                throw new Error('Can mo du an qua local server de ghi truc tiep story_data.json.');
+            }
+
+            const response = await fetch('/api/save-story', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(documentData)
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || 'Khong ghi duoc story_data.json');
+            }
+
+            return payload;
+        }
+
+        async function saveAndReturn() {
             try {
                 const bgVfx = document.getElementById('setup-bg-vfx').value;
                 const charVfx = document.getElementById('setup-char-vfx').value;
-                const bgSrc = document.getElementById('prev-bg').src;
-                const charSrc = document.getElementById('prev-char').src;
+                const bgPrompt = document.getElementById('setup-bg-prompt').value.trim();
+                const charPrompt = document.getElementById('setup-char-prompt').value.trim();
+                const bgSrc = activeAssets.bg.url || '';
+                const charSrc = activeAssets.char.url || '';
+                const editorDraft = loadEditorDraft();
 
-                let bgSrc = document.getElementById('prev-bg').getAttribute('src') || "";
-                if (bgSrc === window.location.href) bgSrc = "";
+                const visualConfig = {
+                    bgUrl: bgSrc,
+                    bgVfx: bgVfx,
+                    bgPrompt: bgPrompt,
+                    bgSource: activeAssets.bg.source,
+                    charUrl: charSrc,
+                    charVfx: charVfx,
+                    charPrompt: charPrompt,
+                    charSource: activeAssets.char.source
+                };
 
-                let charSrc = document.getElementById('prev-char').getAttribute('src') || "";
-                if (charSrc === window.location.href) charSrc = "";
-                
                 if (nodeIndex === -1) {
-                    const newNode = {
-                        id: editingNodeId,
-                        characterName: "Nhân vật mới",
-                        dialogueText: "Nội dung trống",
-                        nextNode: "end",
-                        characterSprite: charSrc,
+                    saveEditorDraft({
+                        ...editorDraft,
+                        id: editingNodeId || editorDraft.id || '',
                         visualConfig: {
-                            bgUrl: bgSrc,
-                            bgVfx: bgVfx,
-                            charUrl: charSrc,
-                            charVfx: charVfx
-                        }
-                    };
-                    storyData.push(newNode);
+                            ...(editorDraft.visualConfig || {}),
+                            ...visualConfig
+                        },
+                        bgVfx: visualConfig.bgVfx || '',
+                        charVfx: visualConfig.charVfx || ''
+                    });
+                    alert('Da luu thiet lap anh cho node dang soan. Du lieu ten, thoai va lien ket giu nguyen o index.');
+                    window.location.href = 'index.html';
+                    return;
                 } else {
                     storyData[nodeIndex].characterSprite = charSrc;
+                    storyData[nodeIndex].background = bgSrc;
                     storyData[nodeIndex].visualConfig = {
-                        bgUrl: bgSrc,
-                        bgVfx: bgVfx,
-                        charUrl: charSrc,
-                        charVfx: charVfx
+                        ...(storyData[nodeIndex].visualConfig || {}),
+                        ...visualConfig
                     };
                 }
 
-                localStorage.setItem('storyData', JSON.stringify(storyData));
-                alert("Đã lưu thiết lập hiệu ứng bóc tách thành công!");
+                const storyDocument = buildStoryDocument(storyData);
+                await saveStoryDocumentToProject(storyDocument);
+
+                alert('Da luu thiet lap hinh anh va dong bo sang trinh phat.');
                 window.location.href = 'index.html';
-                
-            } catch (err) {
-                console.error("Lỗi khi lưu dữ liệu:", err);
-                alert("Không thể lưu: " + err.message);
+            } catch (error) {
+                console.error('Loi khi luu du lieu:', error);
+                alert('Khong the luu: ' + error.message);
             }
         }
+
+        window.generateImageFor = generateImageFor;
+        window.handleManualAsset = handleManualAsset;
+        window.previewVisuals = previewVisuals;
+        window.saveAndReturn = saveAndReturn;
+        window.syncPromptDraft = syncPromptDraft;
     </script>
 </body>
 </html>

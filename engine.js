@@ -18,10 +18,84 @@ const MAX_HP = 10;
 
 const bgmPlayer = new Audio(); bgmPlayer.loop = true;
 const sfxPlayer = new Audio();
+const EDITOR_DRAFT_KEY = 'editorDraft';
+const STORY_CACHE_KEY = 'storyData';
 
-function initEngine() {
-    const savedData = localStorage.getItem('storyData');
-    if (savedData) storyData = JSON.parse(savedData);
+function normalizeStoryData(rawData) {
+    const scenes = Array.isArray(rawData) ? rawData : ((rawData && Array.isArray(rawData.scenes)) ? rawData.scenes : []);
+
+    return scenes.map((node) => {
+        const visualConfig = { ...(node.visualConfig || {}) };
+        if (!visualConfig.bgUrl && node.background) visualConfig.bgUrl = node.background;
+        if (!visualConfig.charUrl && node.characterSprite) visualConfig.charUrl = node.characterSprite;
+
+        let audioConfig = node.audio || { action: 'continue' };
+        if (audioConfig && !audioConfig.action) {
+            if (audioConfig.bgm && audioConfig.bgm !== 'continue' && audioConfig.bgm !== 'none') {
+                audioConfig = { action: 'play', url: audioConfig.bgm };
+            } else if (audioConfig.bgm === 'none') {
+                audioConfig = { action: 'stop' };
+            } else {
+                audioConfig = { action: 'continue' };
+            }
+        }
+
+        const sfxUrl = node.sfxUrl || ((node.audio && node.audio.sfx && node.audio.sfx !== 'none') ? node.audio.sfx : '');
+
+        return {
+            ...node,
+            visualConfig,
+            characterSprite: node.characterSprite || visualConfig.charUrl || '',
+            audio: audioConfig,
+            sfxUrl
+        };
+    });
+}
+
+function buildStoryDocument(data) {
+    return {
+        scenes: data.map((node) => ({
+            ...node,
+            background: (node.visualConfig && node.visualConfig.bgUrl) ? node.visualConfig.bgUrl : (node.background || ''),
+            characterSprite: node.characterSprite || ((node.visualConfig && node.visualConfig.charUrl) ? node.visualConfig.charUrl : '')
+        }))
+    };
+}
+
+function setStoryDataCache(data) {
+    try {
+        localStorage.setItem(STORY_CACHE_KEY, JSON.stringify(data));
+    } catch (error) {
+        console.warn('Bo qua cache localStorage storyData:', error);
+        try { localStorage.removeItem(STORY_CACHE_KEY); } catch (removeError) {}
+    }
+}
+
+async function initEngine() {
+    try {
+        const response = await fetch('story_data.json', { cache: 'no-store' });
+        if (response.ok) {
+            const fileData = await response.json();
+            storyData = normalizeStoryData(fileData);
+            setStoryDataCache(storyData);
+        }
+    } catch (error) {
+        console.warn('Khong the nap story_data.json, thu fallback localStorage:', error);
+    }
+
+    if (storyData.length === 0) {
+        const savedData = localStorage.getItem(STORY_CACHE_KEY);
+        if (savedData) {
+            try {
+                storyData = normalizeStoryData(JSON.parse(savedData));
+            } catch (error) {
+                console.warn('Du lieu localStorage khong hop le:', error);
+                localStorage.removeItem(STORY_CACHE_KEY);
+                storyData = [];
+            }
+        }
+    }
+
     playerInventory = []; activeCE = null; currentHP = 10;
     storyData.forEach(node => { if(node.hpConfig) node.hpConfig.applied = false; });
     renderFlowchart();
@@ -33,6 +107,59 @@ function switchTab(tabId) {
     document.querySelectorAll('.view-content').forEach(view => view.classList.remove('active-view'));
     document.getElementById(tabId + '-view').classList.add('active-view');
     if (tabId === 'flowchart') renderFlowchart();
+}
+
+function collectEditorDraft() {
+    const getValue = (id) => {
+        const element = document.getElementById(id);
+        return element ? element.value : '';
+    };
+
+    const previousDraft = loadEditorDraftFromStorage() || {};
+    const draftVisualConfig = previousDraft.visualConfig || {};
+
+    return {
+        id: getValue('edit-node-id'),
+        characterName: getValue('edit-char-name'),
+        dialogueText: getValue('edit-dialogue'),
+        nextNode: getValue('edit-next-node'),
+        bgVfx: getValue('edit-bg-vfx'),
+        charVfx: getValue('edit-char-vfx'),
+        visualConfig: {
+            ...draftVisualConfig,
+            bgVfx: getValue('edit-bg-vfx') || draftVisualConfig.bgVfx || '',
+            charVfx: getValue('edit-char-vfx') || draftVisualConfig.charVfx || ''
+        }
+    };
+}
+
+function saveEditorDraftToStorage() {
+    localStorage.setItem(EDITOR_DRAFT_KEY, JSON.stringify(collectEditorDraft()));
+}
+
+function loadEditorDraftFromStorage() {
+    try {
+        return JSON.parse(localStorage.getItem(EDITOR_DRAFT_KEY) || 'null');
+    } catch (error) {
+        return null;
+    }
+}
+
+function hydrateEditorFormFromDraft() {
+    const draft = loadEditorDraftFromStorage();
+    if (!draft) return;
+
+    const setValue = (id, value) => {
+        const element = document.getElementById(id);
+        if (element && typeof value === 'string') element.value = value;
+    };
+
+    setValue('edit-node-id', draft.id || '');
+    setValue('edit-char-name', draft.characterName || '');
+    setValue('edit-dialogue', draft.dialogueText || '');
+    setValue('edit-next-node', draft.nextNode || '');
+    setValue('edit-bg-vfx', (draft.visualConfig && draft.visualConfig.bgVfx) || draft.bgVfx || '');
+    setValue('edit-char-vfx', (draft.visualConfig && draft.visualConfig.charVfx) || draft.charVfx || '');
 }
 
 // ==========================================
@@ -49,7 +176,18 @@ function addNewNode() {
     const charFile = document.getElementById('edit-char-img')?.files[0];
     const bgVfx = document.getElementById('edit-bg-vfx')?.value || "";
     const charVfx = document.getElementById('edit-char-vfx')?.value || "";
-    let visualConfig = { bgUrl: bgFile ? URL.createObjectURL(bgFile) : "", bgVfx: bgVfx, charUrl: charFile ? URL.createObjectURL(charFile) : "", charVfx: charVfx };
+    const editorDraft = loadEditorDraftFromStorage() || {};
+    const draftVisualConfig = editorDraft.visualConfig || {};
+    let visualConfig = {
+        bgUrl: bgFile ? URL.createObjectURL(bgFile) : (draftVisualConfig.bgUrl || ""),
+        bgVfx: bgVfx || draftVisualConfig.bgVfx || "",
+        bgPrompt: draftVisualConfig.bgPrompt || "",
+        bgSource: draftVisualConfig.bgSource || "",
+        charUrl: charFile ? URL.createObjectURL(charFile) : (draftVisualConfig.charUrl || ""),
+        charVfx: charVfx || draftVisualConfig.charVfx || "",
+        charPrompt: draftVisualConfig.charPrompt || "",
+        charSource: draftVisualConfig.charSource || ""
+    };
 
     const bgmFile = document.getElementById('edit-bgm')?.files[0];
     const stopAudio = document.getElementById('edit-stop-audio')?.checked;
@@ -81,15 +219,48 @@ function addNewNode() {
     let uiX = 100 + (storyData.length * 320 % 2000);
     let uiY = 100 + (Math.floor(storyData.length / 6) * 250);
 
-    const newNode = { id, characterName: charName, dialogueText: dialogue, visualConfig, audio: audioConfig, sfxUrl, hpConfig, addEvidence, evidenceChallenge, choices, nextNode, pressNode, ceSetup, ceAdd, uiX, uiY };
+    const newNode = {
+        id,
+        characterName: charName,
+        dialogueText: dialogue,
+        characterSprite: visualConfig.charUrl || "",
+        background: visualConfig.bgUrl || "",
+        visualConfig,
+        audio: audioConfig,
+        sfxUrl,
+        hpConfig,
+        addEvidence,
+        evidenceChallenge,
+        choices,
+        nextNode,
+        pressNode,
+        ceSetup,
+        ceAdd,
+        uiX,
+        uiY
+    };
+    const existingNodeIndex = storyData.findIndex(node => node.id === id);
 
-    if (storyData.length > 0 && !document.getElementById('edit-node-id').value) {
-        let lastNode = storyData[storyData.length - 1];
-        if (!lastNode.choices || lastNode.choices.length===0) lastNode.nextNode = id;
+    if (existingNodeIndex !== -1) {
+        storyData[existingNodeIndex] = {
+            ...storyData[existingNodeIndex],
+            ...newNode,
+            visualConfig: {
+                ...(storyData[existingNodeIndex].visualConfig || {}),
+                ...visualConfig
+            }
+        };
+    } else {
+        if (storyData.length > 0 && !document.getElementById('edit-node-id').value) {
+            let lastNode = storyData[storyData.length - 1];
+            if (!lastNode.choices || lastNode.choices.length===0) lastNode.nextNode = id;
+        }
+
+        storyData.push(newNode);
     }
 
-    storyData.push(newNode);
-    localStorage.setItem('storyData', JSON.stringify(storyData));
+    setStoryDataCache(storyData);
+    localStorage.removeItem(EDITOR_DRAFT_KEY);
     
     // Clear Form
     ['edit-node-id','edit-dialogue','edit-next-node','edit-hp-amount','edit-add-ev-id','edit-add-ev-name','edit-add-ev-desc','edit-add-ev-img','edit-correct-ev','edit-ev-pass','edit-ev-fail','edit-press-node','edit-ce-setup','edit-ce-hint','edit-ce-all-pressed','edit-ce-fail-ev','edit-ce-add-new','edit-ce-add-after'].forEach(i => { if(document.getElementById(i)) document.getElementById(i).value=''; });
@@ -189,7 +360,7 @@ function finishLink(e, targetId) {
         if (srcNode) {
             if (linkingFrom.type === 'next') srcNode.nextNode = targetId;
             else if (linkingFrom.type === 'choice') srcNode.choices[linkingFrom.choiceIdx].nextNode = targetId;
-            localStorage.setItem('storyData', JSON.stringify(storyData));
+            setStoryDataCache(storyData);
             renderFlowchart();
         }
     }
@@ -234,7 +405,7 @@ window.addEventListener('mouseup', () => {
         if (node && box) { 
             node.uiX = parseInt(box.style.left); 
             node.uiY = parseInt(box.style.top); 
-            localStorage.setItem('storyData', JSON.stringify(storyData)); 
+            setStoryDataCache(storyData); 
         }
         draggedNodeId = null; // Cực kỳ quan trọng: Hủy id đang kéo để giải phóng chuột
     }
@@ -285,7 +456,7 @@ function breakLinks(nodeId) {
     if (!node) return;
     node.nextNode = "end";
     if (node.choices) node.choices.forEach(c => c.nextNode = "end");
-    localStorage.setItem('storyData', JSON.stringify(storyData)); renderFlowchart();
+    setStoryDataCache(storyData); renderFlowchart();
 }
 
 function deleteNode(nodeId) {
@@ -295,7 +466,7 @@ function deleteNode(nodeId) {
             if(n.nextNode === nodeId) n.nextNode = "end";
             if(n.choices) n.choices.forEach(c => { if(c.nextNode === nodeId) c.nextNode = "end"; });
         });
-        localStorage.setItem('storyData', JSON.stringify(storyData)); renderFlowchart();
+        setStoryDataCache(storyData); renderFlowchart();
     }
 }
 
@@ -319,7 +490,7 @@ function saveModalEdit() {
         if(!node.visualConfig) node.visualConfig = {};
         node.visualConfig.bgVfx = document.getElementById('modal-bg-vfx').value;
         node.visualConfig.charVfx = document.getElementById('modal-char-vfx').value;
-        localStorage.setItem('storyData', JSON.stringify(storyData));
+        setStoryDataCache(storyData);
         renderFlowchart(); closeModal();
     }
 }
@@ -399,11 +570,12 @@ function playNode(nodeId) {
     const bgLayer = document.getElementById('background-layer');
     const charSprite = document.getElementById('character-sprite');
     const config = node.visualConfig;
-    if (config && config.bgUrl) bgLayer.style.backgroundImage = `url('${config.bgUrl}')`;
+    bgLayer.style.backgroundImage = (config && config.bgUrl) ? `url('${config.bgUrl}')` : '';
     bgLayer.className = (config && config.bgVfx) ? config.bgVfx : "";
 
     const charSrc = node.characterSprite || (config ? config.charUrl : "");
-    if (charSrc) { charSprite.src = charSrc; charSprite.style.display = "block"; } else charSprite.style.display = "none";
+    if (charSrc) { charSprite.src = charSrc; charSprite.style.display = "block"; }
+    else { charSprite.removeAttribute('src'); charSprite.style.display = "none"; }
     charSprite.className = (config && config.charVfx) ? config.charVfx : "";
 
     if (node.audio) {
@@ -530,7 +702,8 @@ document.addEventListener('click', (e) => {
 function goToVisualEditor() {
     let customId = document.getElementById('edit-node-id').value;
     if (!customId) { alert("Vui lòng nhập ID Node!"); return; }
-    localStorage.setItem('editingNodeId', customId); localStorage.setItem('storyData', JSON.stringify(storyData));
+    saveEditorDraftToStorage();
+    localStorage.setItem('editingNodeId', customId); setStoryDataCache(storyData);
     window.location.href = 'visual-editor.html';
 }
 
@@ -544,8 +717,10 @@ function addChoiceField() {
 function exportData() {
     if(storyData.length===0) return;
     const a = document.createElement('a');
-    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ scenes: storyData }, null, 2));
-    a.download = "story_engine_data.json"; document.body.appendChild(a); a.click(); a.remove();
+    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(buildStoryDocument(storyData), null, 2));
+    a.download = "story_data.json"; document.body.appendChild(a); a.click(); a.remove();
 }
 
-initEngine();
+initEngine().then(() => {
+    hydrateEditorFormFromDraft();
+});
