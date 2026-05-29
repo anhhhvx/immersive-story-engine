@@ -15,7 +15,7 @@
             width: 460px; background: #2c3e50; padding: 20px; border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-height: calc(100vh - 40px); overflow-y: auto;
         }
-        .effect-select, .text-input, .text-area, .api-key-input {
+        .effect-select, .text-input, .text-area {
             width: 100%; padding: 10px; margin: 8px 0 0 0;
             background: #34495e; color: white; border: none; border-radius: 4px; box-sizing: border-box;
         }
@@ -47,19 +47,10 @@
             <h2>Thiet lap Lop Do hoa & VFX</h2>
             <p id="editing-node-info" style="color: #f39c12; font-weight: bold; margin-bottom: 20px;">Dang sua Node: None</p>
 
-            <div class="input-group" style="border-left: 4px solid #16a085; padding-left: 10px;">
-                <label>Hugging Face token</label>
-                <input type="password" id="hf-api-key" class="api-key-input" placeholder="hf_...">
-                <div class="helper-text">
-                    Token duoc luu trong localStorage trinh duyet nay de tao anh bang free tier cua Hugging Face.
-                </div>
-            </div>
-
             <div class="input-group" style="border-left: 4px solid #3498db; padding-left: 10px;">
                 <label>1. Anh nen courtroom_bg</label>
-                <textarea id="setup-bg-prompt" class="text-area" placeholder="VD: Mot phong xu an u am, phong cach anime" oninput="syncPromptDraft('bg')"></textarea>
+                <textarea id="setup-bg-prompt" class="text-area" placeholder="Ghi chu hoac thong tin mo ta background" oninput="syncPromptDraft('bg')"></textarea>
                 <div class="prompt-grid">
-                    <button type="button" id="btn-generate-bg" onclick="generateImageFor('bg')" style="background: #2980b9;">Tao background bang AI</button>
                     <input type="file" id="setup-bg" accept="image/*" onchange="handleManualAsset('bg')" class="text-input">
                 </div>
                 <span id="bg-asset-chip" class="asset-chip" style="display:none;"></span>
@@ -77,9 +68,8 @@
 
             <div class="input-group" style="border-left: 4px solid #9b59b6; padding-left: 10px;">
                 <label>2. Anh nhan vat</label>
-                <textarea id="setup-char-prompt" class="text-area" placeholder="VD: Luat su tre, dang chi tay, phong cach anime, PNG nhan vat toan than" oninput="syncPromptDraft('char')"></textarea>
+                <textarea id="setup-char-prompt" class="text-area" placeholder="Ghi chu hoac thong tin mo ta nhan vat" oninput="syncPromptDraft('char')"></textarea>
                 <div class="prompt-grid">
-                    <button type="button" id="btn-generate-char" onclick="generateImageFor('char')" style="background: #8e44ad;">Tao avatar bang AI</button>
                     <input type="file" id="setup-char-img" accept="image/*" onchange="handleManualAsset('char')" class="text-input">
                 </div>
                 <span id="char-asset-chip" class="asset-chip" style="display:none;"></span>
@@ -107,12 +97,9 @@
     </div>
 
     <script type="module">
-        import { InferenceClient } from 'https://cdn.jsdelivr.net/npm/@huggingface/inference@4.13.15/+esm';
-
         const editingNodeId = localStorage.getItem('editingNodeId');
         const EDITOR_DRAFT_KEY = 'editorDraft';
         const STORY_CACHE_KEY = 'storyData';
-        const storedApiKey = localStorage.getItem('hfApiKey') || '';
         let storyData = [];
         let nodeIndex = -1;
         let node = null;
@@ -120,22 +107,8 @@
             bg: { url: '', source: 'empty', prompt: '' },
             char: { url: '', source: 'empty', prompt: '' }
         };
-        const IMAGE_MODEL_CANDIDATES = {
-            bg: [
-                'black-forest-labs/FLUX.1-schnell',
-                'stabilityai/stable-diffusion-xl-base-1.0'
-            ],
-            char: [
-                'black-forest-labs/FLUX.1-schnell',
-                'stabilityai/stable-diffusion-xl-base-1.0'
-            ]
-        };
 
         document.getElementById('editing-node-info').innerText = 'Dang sua Node: ' + (editingNodeId || 'Chua xac dinh');
-        document.getElementById('hf-api-key').value = storedApiKey;
-        document.getElementById('hf-api-key').addEventListener('change', (event) => {
-            localStorage.setItem('hfApiKey', event.target.value.trim());
-        });
 
         initializeEditor();
 
@@ -244,7 +217,6 @@
             }
 
             const labelMap = {
-                ai: 'Anh AI',
                 upload: 'Anh upload',
                 existing: 'Anh hien co'
             };
@@ -323,92 +295,6 @@
             const context = canvas.getContext('2d');
             context.drawImage(image, 0, 0);
             return canvas.toDataURL('image/png');
-        }
-
-        async function generateImageFor(kind) {
-            const promptFieldId = kind === 'bg' ? 'setup-bg-prompt' : 'setup-char-prompt';
-            const prompt = document.getElementById(promptFieldId).value.trim();
-            const apiKey = document.getElementById('hf-api-key').value.trim();
-            const button = document.getElementById(kind === 'bg' ? 'btn-generate-bg' : 'btn-generate-char');
-
-            if (!prompt) {
-                setStatus(kind, 'Hay nhap prompt mo ta truoc khi tao anh.');
-                return;
-            }
-
-            if (!apiKey) {
-                setStatus(kind, 'Can nhap Hugging Face token de goi Text-to-Image.');
-                return;
-            }
-
-            localStorage.setItem('hfApiKey', apiKey);
-            button.disabled = true;
-            setStatus(kind, 'Dang tao anh AI...');
-
-            try {
-                const enhancedPrompt = kind === 'bg'
-                    ? prompt + '. High quality anime background for a courtroom visual novel scene, cinematic lighting, no text, no watermark.'
-                    : prompt + '. High quality anime character sprite PNG for a courtroom visual novel, full body, transparent background, centered subject, no text, no watermark.';
-                const client = new InferenceClient(apiKey);
-                const generationParameters = kind === 'bg'
-                    ? {
-                        width: 1536,
-                        height: 1024,
-                        guidance_scale: 7.5,
-                        num_inference_steps: 24
-                    }
-                    : {
-                        width: 1024,
-                        height: 1536,
-                        guidance_scale: 7.5,
-                        num_inference_steps: 24
-                    };
-                const modelCandidates = IMAGE_MODEL_CANDIDATES[kind];
-                let imageBlob = null;
-                let lastError = null;
-
-                for (const modelName of modelCandidates) {
-                    setStatus(kind, 'Dang tao anh AI voi model ' + modelName + ' ...');
-                    try {
-                        imageBlob = await client.textToImage({
-                            model: modelName,
-                            provider: 'hf-inference',
-                            inputs: enhancedPrompt,
-                            parameters: generationParameters
-                        });
-                        if (imageBlob && imageBlob.size) {
-                            setStatus(kind, 'Da tao anh bang model ' + modelName + '.');
-                            break;
-                        }
-                    } catch (modelError) {
-                        console.warn('Model failed:', modelName, modelError);
-                        lastError = modelError;
-                    }
-                }
-
-                if (!imageBlob || !imageBlob.size) {
-                    throw new Error(lastError && lastError.message ? lastError.message : 'Khong model nao tao duoc hinh anh.');
-                }
-
-                const objectUrl = URL.createObjectURL(imageBlob);
-                const normalizedUrl = kind === 'char'
-                    ? await convertImageToPngDataUrl(objectUrl)
-                    : objectUrl;
-                activeAssets[kind] = {
-                    url: normalizedUrl,
-                    source: 'ai',
-                    prompt: prompt
-                };
-
-                renderAssetChip(kind);
-                previewVisuals();
-                setStatus(kind, 'Da tao anh AI va dua vao preview.');
-            } catch (error) {
-                console.error('Image generation error:', error);
-                setStatus(kind, 'Loi tao anh: ' + error.message);
-            } finally {
-                button.disabled = false;
-            }
         }
 
         function buildStoryDocument(data) {
@@ -512,7 +398,6 @@
             }
         }
 
-        window.generateImageFor = generateImageFor;
         window.handleManualAsset = handleManualAsset;
         window.previewVisuals = previewVisuals;
         window.saveAndReturn = saveAndReturn;
