@@ -96,6 +96,9 @@
         
         <button id="btn-add-node" onclick="addNewNode()" style="background: #e74c3c; font-size: 1.1rem; padding: 15px;">THÊM PHÂN CẢNH</button>
         <button id="btn-export-json" onclick="exportData()">💾 Xuất Kịch Bản (JSON)</button>
+        <button type="button" onclick="saveCurrentStoryJson()" style="background: #16a085;">Lưu JSON Hiện Tại</button>
+        <input type="file" id="import-story-json" accept="application/json,.json" style="display:none;" onchange="importStoryJson(this)">
+        <button type="button" onclick="document.getElementById('import-story-json').click()" style="background: #2980b9;">Tải Kịch Bản Cũ</button>
     </div>
 
     <div id="workspace">

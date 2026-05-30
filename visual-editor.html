@@ -49,7 +49,6 @@
 
             <div class="input-group" style="border-left: 4px solid #3498db; padding-left: 10px;">
                 <label>1. Anh nen courtroom_bg</label>
-                <textarea id="setup-bg-prompt" class="text-area" placeholder="Ghi chu hoac thong tin mo ta background" oninput="syncPromptDraft('bg')"></textarea>
                 <div class="prompt-grid">
                     <input type="file" id="setup-bg" accept="image/*" onchange="handleManualAsset('bg')" class="text-input">
                 </div>
@@ -68,7 +67,6 @@
 
             <div class="input-group" style="border-left: 4px solid #9b59b6; padding-left: 10px;">
                 <label>2. Anh nhan vat</label>
-                <textarea id="setup-char-prompt" class="text-area" placeholder="Ghi chu hoac thong tin mo ta nhan vat" oninput="syncPromptDraft('char')"></textarea>
                 <div class="prompt-grid">
                     <input type="file" id="setup-char-img" accept="image/*" onchange="handleManualAsset('char')" class="text-input">
                 </div>
@@ -96,10 +94,13 @@
         </div>
     </div>
 
-    <script type="module">
+    <script>
         const editingNodeId = localStorage.getItem('editingNodeId');
         const EDITOR_DRAFT_KEY = 'editorDraft';
         const STORY_CACHE_KEY = 'storyData';
+        const PENDING_VISUAL_UPDATE_KEY = 'pendingVisualUpdate';
+        const STORY_DB_NAME = 'immersiveStoryEngine';
+        const STORY_DB_STORE = 'sync';
         let storyData = [];
         let nodeIndex = -1;
         let node = null;
@@ -112,6 +113,7 @@
 
         initializeEditor();
 
+        // Khoi tao visual editor: nap kich ban, tim node dang sua va do du lieu len form.
         async function initializeEditor() {
             storyData = await loadStoryData();
             nodeIndex = storyData.findIndex((item) => item.id === editingNodeId);
@@ -119,7 +121,15 @@
             initializeFromNode();
         }
 
+        // Nap kich ban tu localStorage truoc, sau do fallback sang story_data.json neu can.
         async function loadStoryData() {
+            try {
+                const storedStory = JSON.parse(localStorage.getItem(STORY_CACHE_KEY) || '[]');
+                if (Array.isArray(storedStory) && storedStory.length > 0) {
+                    return storedStory;
+                }
+            } catch (error) {}
+
             try {
                 if (window.location.protocol !== 'file:') {
                     const response = await fetch('story_data.json', { cache: 'no-store' });
@@ -133,28 +143,22 @@
                 console.warn('Khong the nap story_data.json trong visual editor:', error);
             }
 
-            try {
-                const storedStory = JSON.parse(localStorage.getItem(STORY_CACHE_KEY) || '[]');
-                return Array.isArray(storedStory) ? storedStory : [];
-            } catch (error) {
-                return [];
-            }
+            return [];
         }
 
+        // Do anh, VFX va draft hien co vao preview visual editor.
         function initializeFromNode() {
             if (!node) {
                 const editorDraft = loadEditorDraft();
                 const draftVisualConfig = editorDraft.visualConfig || {};
                 document.getElementById('setup-bg-vfx').value = draftVisualConfig.bgVfx || editorDraft.bgVfx || '';
                 document.getElementById('setup-char-vfx').value = draftVisualConfig.charVfx || editorDraft.charVfx || '';
-                document.getElementById('setup-bg-prompt').value = draftVisualConfig.bgPrompt || '';
-                document.getElementById('setup-char-prompt').value = draftVisualConfig.charPrompt || '';
 
                 if (draftVisualConfig.bgUrl) {
                     activeAssets.bg = {
                         url: draftVisualConfig.bgUrl,
                         source: draftVisualConfig.bgSource || 'existing',
-                        prompt: draftVisualConfig.bgPrompt || ''
+                        prompt: ''
                     };
                 }
 
@@ -162,7 +166,7 @@
                     activeAssets.char = {
                         url: draftVisualConfig.charUrl,
                         source: draftVisualConfig.charSource || 'existing',
-                        prompt: draftVisualConfig.charPrompt || ''
+                        prompt: ''
                     };
                 }
 
@@ -178,14 +182,12 @@
 
             document.getElementById('setup-bg-vfx').value = visualConfig.bgVfx || '';
             document.getElementById('setup-char-vfx').value = visualConfig.charVfx || '';
-            document.getElementById('setup-bg-prompt').value = visualConfig.bgPrompt || '';
-            document.getElementById('setup-char-prompt').value = visualConfig.charPrompt || '';
 
             if (existingBgUrl) {
                 activeAssets.bg = {
                     url: existingBgUrl,
                     source: visualConfig.bgSource || 'existing',
-                    prompt: visualConfig.bgPrompt || ''
+                    prompt: ''
                 };
             }
 
@@ -193,7 +195,7 @@
                 activeAssets.char = {
                     url: existingCharUrl,
                     source: visualConfig.charSource || 'existing',
-                    prompt: visualConfig.charPrompt || ''
+                    prompt: ''
                 };
             }
 
@@ -202,11 +204,7 @@
             previewVisuals();
         }
 
-        function syncPromptDraft(kind) {
-            const promptValue = document.getElementById(kind === 'bg' ? 'setup-bg-prompt' : 'setup-char-prompt').value.trim();
-            activeAssets[kind].prompt = promptValue;
-        }
-
+        // Hien thi nhan trang thai cho anh nen/anh nhan vat da chon.
         function renderAssetChip(kind) {
             const chip = document.getElementById(kind === 'bg' ? 'bg-asset-chip' : 'char-asset-chip');
             const asset = activeAssets[kind];
@@ -224,10 +222,12 @@
             chip.textContent = labelMap[asset.source] || 'Anh da chon';
         }
 
+        // Cap nhat dong thong bao trang thai cho background hoac character.
         function setStatus(kind, message) {
             document.getElementById(kind === 'bg' ? 'bg-status' : 'char-status').innerText = message || '';
         }
 
+        // Cap nhat khung preview theo anh va VFX dang chon.
         function previewVisuals() {
             const prevBg = document.getElementById('prev-bg');
             const prevChar = document.getElementById('prev-char');
@@ -247,6 +247,7 @@
             }
         }
 
+        // Doc anh nguoi dung upload, chuan hoa neu can va dua vao preview.
         function handleManualAsset(kind) {
             const input = document.getElementById(kind === 'bg' ? 'setup-bg' : 'setup-char-img');
             const file = input.files && input.files[0];
@@ -262,7 +263,7 @@
                     activeAssets[kind] = {
                         url: normalizedUrl,
                         source: 'upload',
-                        prompt: document.getElementById(kind === 'bg' ? 'setup-bg-prompt' : 'setup-char-prompt').value.trim()
+                        prompt: ''
                     };
                     renderAssetChip(kind);
                     setStatus(kind, kind === 'char' ? 'Da nap avatar PNG vao khung preview.' : 'Da nap anh tai len vao khung preview.');
@@ -278,6 +279,7 @@
             reader.readAsDataURL(file);
         }
 
+        // Tai mot anh vao Image object de canvas co the xu ly.
         function loadImageElement(sourceUrl) {
             return new Promise((resolve, reject) => {
                 const image = new Image();
@@ -287,6 +289,7 @@
             });
         }
 
+        // Chuyen anh nhan vat sang PNG Data URL de luu on dinh trong JSON.
         async function convertImageToPngDataUrl(sourceUrl) {
             const image = await loadImageElement(sourceUrl);
             const canvas = document.createElement('canvas');
@@ -297,6 +300,7 @@
             return canvas.toDataURL('image/png');
         }
 
+        // Tao document JSON co scenes va dong bo background/characterSprite tu visualConfig.
         function buildStoryDocument(data) {
             const scenes = data.map((scene) => {
                 const visualConfig = scene.visualConfig || {};
@@ -310,6 +314,7 @@
             return { scenes };
         }
 
+        // Doc draft node dang soan tu localStorage.
         function loadEditorDraft() {
             try {
                 return JSON.parse(localStorage.getItem(EDITOR_DRAFT_KEY) || 'null') || {};
@@ -318,13 +323,88 @@
             }
         }
 
+        // Luu draft node dang soan de index co the tiep tuc sau khi quay ve.
         function saveEditorDraft(draft) {
-            localStorage.setItem(EDITOR_DRAFT_KEY, JSON.stringify(draft));
+            try {
+                localStorage.setItem(EDITOR_DRAFT_KEY, JSON.stringify(draft));
+            } catch (error) {
+                throw new Error('Anh vua chon qua lon de luu tam trong trinh duyet. Hay mo bang local server va thu lai.');
+            }
         }
 
+        // Luu danh sach scene vao localStorage de index va visual editor dong bo.
+        function setStoryDataCache(data) {
+            try {
+                localStorage.setItem(STORY_CACHE_KEY, JSON.stringify(data));
+                return true;
+            } catch (error) {
+                console.warn('Bo qua cache localStorage storyData vi vuot quota:', error);
+                try { localStorage.removeItem(STORY_CACHE_KEY); } catch (removeError) {}
+                return false;
+            }
+        }
+
+        // Mo IndexedDB de luu du lieu dong bo lon nhu anh Data URL.
+        function openStorySyncDb() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) {
+                    reject(new Error('IndexedDB khong kha dung.'));
+                    return;
+                }
+
+                const request = indexedDB.open(STORY_DB_NAME, 1);
+                request.onupgradeneeded = () => {
+                    request.result.createObjectStore(STORY_DB_STORE);
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Ghi mot gia tri dong bo lon vao IndexedDB.
+        async function setStorySyncValue(key, value) {
+            const db = await openStorySyncDb();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORY_DB_STORE, 'readwrite');
+                const request = transaction.objectStore(STORY_DB_STORE).put(value, key);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Xoa mot gia tri dong bo trong IndexedDB khi khong con can pending update.
+        async function removeStorySyncValue(key) {
+            const db = await openStorySyncDb();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORY_DB_STORE, 'readwrite');
+                const request = transaction.objectStore(STORY_DB_STORE).delete(key);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Luu rieng visual update cua node hien tai khi khong the cache ca kich ban.
+        async function savePendingVisualUpdate(nodeId, visualConfig, background, characterSprite) {
+            const pendingUpdate = {
+                nodeId,
+                visualConfig,
+                background,
+                characterSprite
+            };
+
+            try {
+                localStorage.setItem(PENDING_VISUAL_UPDATE_KEY, JSON.stringify(pendingUpdate));
+            } catch (error) {
+                console.warn('Pending visual update vuot localStorage, chuyen sang IndexedDB:', error);
+            }
+
+            await setStorySyncValue(PENDING_VISUAL_UPDATE_KEY, pendingUpdate);
+        }
+
+        // Goi API local server de ghi truc tiep story_data.json neu khong mo bang file://.
         async function saveStoryDocumentToProject(documentData) {
             if (window.location.protocol === 'file:') {
-                throw new Error('Can mo du an qua local server de ghi truc tiep story_data.json.');
+                return false;
             }
 
             const response = await fetch('/api/save-story', {
@@ -343,12 +423,11 @@
             return payload;
         }
 
+        // Luu thiet lap hinh anh/VFX vao node hoac draft, dong bo cache/file roi quay ve index.
         async function saveAndReturn() {
             try {
                 const bgVfx = document.getElementById('setup-bg-vfx').value;
                 const charVfx = document.getElementById('setup-char-vfx').value;
-                const bgPrompt = document.getElementById('setup-bg-prompt').value.trim();
-                const charPrompt = document.getElementById('setup-char-prompt').value.trim();
                 const bgSrc = activeAssets.bg.url || '';
                 const charSrc = activeAssets.char.url || '';
                 const editorDraft = loadEditorDraft();
@@ -356,11 +435,9 @@
                 const visualConfig = {
                     bgUrl: bgSrc,
                     bgVfx: bgVfx,
-                    bgPrompt: bgPrompt,
                     bgSource: activeAssets.bg.source,
                     charUrl: charSrc,
                     charVfx: charVfx,
-                    charPrompt: charPrompt,
                     charSource: activeAssets.char.source
                 };
 
@@ -388,7 +465,20 @@
                 }
 
                 const storyDocument = buildStoryDocument(storyData);
-                await saveStoryDocumentToProject(storyDocument);
+                let savedToProject = false;
+                try {
+                    savedToProject = await saveStoryDocumentToProject(storyDocument);
+                } catch (saveError) {
+                    console.warn('Khong ghi truc tiep story_data.json, dung pending visual sync:', saveError);
+                }
+
+                if (!savedToProject) {
+                    await savePendingVisualUpdate(node.id, visualConfig, bgSrc, charSrc);
+                } else {
+                    localStorage.removeItem(PENDING_VISUAL_UPDATE_KEY);
+                    await removeStorySyncValue(PENDING_VISUAL_UPDATE_KEY).catch(() => {});
+                    setStoryDataCache(storyData);
+                }
 
                 alert('Da luu thiet lap hinh anh va dong bo sang trinh phat.');
                 window.location.href = 'index.html';
@@ -401,7 +491,6 @@
         window.handleManualAsset = handleManualAsset;
         window.previewVisuals = previewVisuals;
         window.saveAndReturn = saveAndReturn;
-        window.syncPromptDraft = syncPromptDraft;
     </script>
 </body>
 </html>

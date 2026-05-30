@@ -21,6 +21,7 @@ const MIME_TYPES = {
     '.wav': 'audio/wav'
 };
 
+// Gui response JSON kem CORS header cho API va loi server.
 function sendJson(response, statusCode, payload) {
     response.writeHead(statusCode, {
         'Content-Type': 'application/json; charset=utf-8',
@@ -29,6 +30,7 @@ function sendJson(response, statusCode, payload) {
     response.end(JSON.stringify(payload));
 }
 
+// Doc file tinh trong project va tra ve dung MIME type.
 function sendFile(response, filePath) {
     const extension = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[extension] || 'application/octet-stream';
@@ -47,6 +49,7 @@ function sendFile(response, filePath) {
     });
 }
 
+// Chuyen URL request thanh duong dan noi bo an toan, chan truy cap ra ngoai thu muc project.
 function safeResolve(requestUrl) {
     const cleanPath = decodeURIComponent(requestUrl.split('?')[0]);
     const relativePath = cleanPath === '/' ? '/index.html' : cleanPath;
@@ -59,6 +62,7 @@ function safeResolve(requestUrl) {
     return resolvedPath;
 }
 
+// Server local phuc vu file tinh va endpoint luu story_data.json.
 const server = http.createServer((request, response) => {
     if (request.method === 'OPTIONS') {
         response.writeHead(204, {
@@ -73,13 +77,15 @@ const server = http.createServer((request, response) => {
     if (request.method === 'POST' && request.url === '/api/save-story') {
         let body = '';
 
+        // Gom body JSON gui len va chan payload vuot gioi han.
         request.on('data', (chunk) => {
             body += chunk;
-            if (body.length > 20 * 1024 * 1024) {
+            if (body.length > 80 * 1024 * 1024) {
                 request.destroy();
             }
         });
 
+        // Parse va kiem tra payload truoc khi ghi vao story_data.json.
         request.on('end', () => {
             try {
                 const payload = JSON.parse(body);
@@ -110,6 +116,7 @@ const server = http.createServer((request, response) => {
         return;
     }
 
+    // Kiem tra file/thu muc ton tai de phuc vu noi dung phu hop.
     fs.stat(filePath, (error, stats) => {
         if (error) {
             sendJson(response, 404, { error: 'Not found' });
@@ -125,6 +132,7 @@ const server = http.createServer((request, response) => {
     });
 });
 
+// Khoi dong server tai cong mac dinh cua project.
 server.listen(PORT, () => {
     console.log(`Immersive Story Engine server running at http://localhost:${PORT}`);
 });

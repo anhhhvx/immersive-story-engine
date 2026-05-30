@@ -18,9 +18,14 @@ const MAX_HP = 10;
 
 const bgmPlayer = new Audio(); bgmPlayer.loop = true;
 const sfxPlayer = new Audio();
+const previewAudioPlayer = new Audio();
 const EDITOR_DRAFT_KEY = 'editorDraft';
 const STORY_CACHE_KEY = 'storyData';
+const PENDING_VISUAL_UPDATE_KEY = 'pendingVisualUpdate';
+const STORY_DB_NAME = 'immersiveStoryEngine';
+const STORY_DB_STORE = 'sync';
 
+// Chuan hoa du lieu kich ban tu JSON cu/moi ve cung mot cau truc scene.
 function normalizeStoryData(rawData) {
     const scenes = Array.isArray(rawData) ? rawData : ((rawData && Array.isArray(rawData.scenes)) ? rawData.scenes : []);
 
@@ -52,6 +57,7 @@ function normalizeStoryData(rawData) {
     });
 }
 
+// Dong goi danh sach scene thanh document JSON de xuat hoac ghi ra story_data.json.
 function buildStoryDocument(data) {
     return {
         scenes: data.map((node) => ({
@@ -62,6 +68,7 @@ function buildStoryDocument(data) {
     };
 }
 
+// Luu tam kich ban vao localStorage de giu trang thai giua index va visual editor.
 function setStoryDataCache(data) {
     try {
         localStorage.setItem(STORY_CACHE_KEY, JSON.stringify(data));
@@ -71,6 +78,74 @@ function setStoryDataCache(data) {
     }
 }
 
+// Mo IndexedDB dung de dong bo du lieu lon nhu anh Data URL giua cac trang.
+function openStorySyncDb() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+            reject(new Error('IndexedDB khong kha dung.'));
+            return;
+        }
+
+        const request = indexedDB.open(STORY_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            request.result.createObjectStore(STORY_DB_STORE);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Doc mot gia tri dong bo lon tu IndexedDB.
+async function getStorySyncValue(key) {
+    const db = await openStorySyncDb();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORY_DB_STORE, 'readonly');
+        const request = transaction.objectStore(STORY_DB_STORE).get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Ap dung cau hinh visual do visual editor gui ve khi khong the cache ca storyData.
+async function applyPendingVisualUpdate() {
+    try {
+        let pendingUpdate = JSON.parse(localStorage.getItem(PENDING_VISUAL_UPDATE_KEY) || 'null');
+        if (!pendingUpdate) {
+            pendingUpdate = await getStorySyncValue(PENDING_VISUAL_UPDATE_KEY);
+        }
+        if (!pendingUpdate || !pendingUpdate.nodeId || !pendingUpdate.visualConfig) return;
+
+        const targetNode = storyData.find((node) => node.id === pendingUpdate.nodeId);
+        if (!targetNode) return;
+
+        targetNode.visualConfig = {
+            ...(targetNode.visualConfig || {}),
+            ...pendingUpdate.visualConfig
+        };
+        targetNode.background = pendingUpdate.background || targetNode.background || '';
+        targetNode.characterSprite = pendingUpdate.characterSprite || targetNode.characterSprite || '';
+        localStorage.removeItem(PENDING_VISUAL_UPDATE_KEY);
+    } catch (error) {
+        console.warn('Khong ap dung duoc pending visual update:', error);
+    }
+}
+
+// Doc file upload thanh Data URL de media van nam trong file JSON khi xuat/lưu.
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            resolve("");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result || "");
+        reader.onerror = () => reject(new Error("Khong doc duoc file: " + file.name));
+        reader.readAsDataURL(file);
+    });
+}
+
+// Khoi tao engine: nap story_data.json, fallback localStorage, reset gameplay va ve flowchart.
 async function initEngine() {
     try {
         const response = await fetch('story_data.json', { cache: 'no-store' });
@@ -97,18 +172,24 @@ async function initEngine() {
     }
 
     playerInventory = []; activeCE = null; currentHP = 10;
+    await applyPendingVisualUpdate();
     storyData.forEach(node => { if(node.hpConfig) node.hpConfig.applied = false; });
     renderFlowchart();
 }
 
+// Chuyen giua man trinh phat va node editor, dong thoi render lai flowchart khi can.
 function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    const activeButton = (typeof event !== 'undefined' && event.currentTarget)
+        ? event.currentTarget
+        : document.querySelector(`.tab-btn[onclick="switchTab('${tabId}')"]`);
+    if (activeButton) activeButton.classList.add('active');
     document.querySelectorAll('.view-content').forEach(view => view.classList.remove('active-view'));
     document.getElementById(tabId + '-view').classList.add('active-view');
     if (tabId === 'flowchart') renderFlowchart();
 }
 
+// Thu thap form dang soan thanh draft truoc khi sang trang visual editor.
 function collectEditorDraft() {
     const getValue = (id) => {
         const element = document.getElementById(id);
@@ -133,10 +214,12 @@ function collectEditorDraft() {
     };
 }
 
+// Luu draft form tao scene vao localStorage.
 function saveEditorDraftToStorage() {
     localStorage.setItem(EDITOR_DRAFT_KEY, JSON.stringify(collectEditorDraft()));
 }
 
+// Doc draft form tao scene tu localStorage.
 function loadEditorDraftFromStorage() {
     try {
         return JSON.parse(localStorage.getItem(EDITOR_DRAFT_KEY) || 'null');
@@ -145,6 +228,7 @@ function loadEditorDraftFromStorage() {
     }
 }
 
+// Do lai draft vao form index khi nguoi dung quay ve tu visual editor.
 function hydrateEditorFormFromDraft() {
     const draft = loadEditorDraftFromStorage();
     if (!draft) return;
@@ -162,10 +246,78 @@ function hydrateEditorFormFromDraft() {
     setValue('edit-char-vfx', (draft.visualConfig && draft.visualConfig.charVfx) || draft.charVfx || '');
 }
 
+// Lay cau hinh hinh anh/VFX dang luu tam trong draft hien tai.
+function getDraftVisualConfig() {
+    const editorDraft = loadEditorDraftFromStorage() || {};
+    return editorDraft.visualConfig || {};
+}
+
+// Tao object preview tam thoi tu file anh/am thanh nguoi dung vua chon tren index.
+function getSelectedMediaPreview() {
+    const bgFile = document.getElementById('edit-bg-img')?.files[0];
+    const charFile = document.getElementById('edit-char-img')?.files[0];
+    const bgmFile = document.getElementById('edit-bgm')?.files[0];
+    const sfxFile = document.getElementById('edit-sfx')?.files[0];
+    const draftVisualConfig = getDraftVisualConfig();
+
+    return {
+        bgUrl: bgFile ? URL.createObjectURL(bgFile) : (draftVisualConfig.bgUrl || ""),
+        charUrl: charFile ? URL.createObjectURL(charFile) : (draftVisualConfig.charUrl || ""),
+        bgVfx: document.getElementById('edit-bg-vfx')?.value || draftVisualConfig.bgVfx || "",
+        charVfx: document.getElementById('edit-char-vfx')?.value || draftVisualConfig.charVfx || "",
+        audioUrl: bgmFile ? URL.createObjectURL(bgmFile) : "",
+        sfxUrl: sfxFile ? URL.createObjectURL(sfxFile) : "",
+        stopAudio: document.getElementById('edit-stop-audio')?.checked || false
+    };
+}
+
+// Hien thi anh va phat am thanh preview tam tren trinh phat truoc khi them scene.
+function previewSelectedSceneMedia() {
+    const preview = getSelectedMediaPreview();
+    const bgLayer = document.getElementById('background-layer');
+    const charSprite = document.getElementById('character-sprite');
+
+    bgLayer.style.backgroundImage = preview.bgUrl ? `url('${preview.bgUrl}')` : '';
+    bgLayer.className = preview.bgVfx;
+
+    if (preview.charUrl) {
+        charSprite.src = preview.charUrl;
+        charSprite.style.display = "block";
+    } else {
+        charSprite.removeAttribute('src');
+        charSprite.style.display = "none";
+    }
+    charSprite.className = preview.charVfx;
+
+    previewAudioPlayer.pause();
+    previewAudioPlayer.currentTime = 0;
+    if (preview.stopAudio) {
+        bgmPlayer.pause();
+        bgmPlayer.currentTime = 0;
+    } else if (preview.audioUrl) {
+        previewAudioPlayer.src = preview.audioUrl;
+        previewAudioPlayer.loop = true;
+        previewAudioPlayer.play().catch(e=>{});
+    } else if (preview.sfxUrl) {
+        previewAudioPlayer.src = preview.sfxUrl;
+        previewAudioPlayer.loop = false;
+        previewAudioPlayer.play().catch(e=>{});
+    }
+}
+
+// Gan su kien change cho cac input media/VFX de preview cap nhat ngay lap tuc.
+function bindSceneMediaPreview() {
+    ['edit-bg-img', 'edit-char-img', 'edit-bg-vfx', 'edit-char-vfx', 'edit-bgm', 'edit-sfx', 'edit-stop-audio'].forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) element.addEventListener('change', previewSelectedSceneMedia);
+    });
+}
+
 // ==========================================
 // 2. EDITOR: THÊM DỮ LIỆU MỚI (LƯU 100% CẤU HÌNH)
 // ==========================================
-function addNewNode() {
+// Tao moi hoac cap nhat mot phan canh tu form index, luu media vao scene va phat ngay scene do.
+async function addNewNode() {
     const id = document.getElementById('edit-node-id').value || "node_" + Date.now();
     const charName = document.getElementById('edit-char-name').value;
     const dialogue = document.getElementById('edit-dialogue').value;
@@ -178,23 +330,26 @@ function addNewNode() {
     const charVfx = document.getElementById('edit-char-vfx')?.value || "";
     const editorDraft = loadEditorDraftFromStorage() || {};
     const draftVisualConfig = editorDraft.visualConfig || {};
+    const bgUrl = bgFile ? await readFileAsDataUrl(bgFile) : (draftVisualConfig.bgUrl || "");
+    const charUrl = charFile ? await readFileAsDataUrl(charFile) : (draftVisualConfig.charUrl || "");
     let visualConfig = {
-        bgUrl: bgFile ? URL.createObjectURL(bgFile) : (draftVisualConfig.bgUrl || ""),
+        bgUrl,
         bgVfx: bgVfx || draftVisualConfig.bgVfx || "",
         bgPrompt: draftVisualConfig.bgPrompt || "",
-        bgSource: draftVisualConfig.bgSource || "",
-        charUrl: charFile ? URL.createObjectURL(charFile) : (draftVisualConfig.charUrl || ""),
+        bgSource: bgFile ? "upload" : (draftVisualConfig.bgSource || ""),
+        charUrl,
         charVfx: charVfx || draftVisualConfig.charVfx || "",
         charPrompt: draftVisualConfig.charPrompt || "",
-        charSource: draftVisualConfig.charSource || ""
+        charSource: charFile ? "upload" : (draftVisualConfig.charSource || "")
     };
 
     const bgmFile = document.getElementById('edit-bgm')?.files[0];
     const stopAudio = document.getElementById('edit-stop-audio')?.checked;
-    let audioConfig = stopAudio ? { action: "stop" } : (bgmFile ? { action: "play", url: URL.createObjectURL(bgmFile) } : { action: "continue" });
+    const bgmUrl = bgmFile ? await readFileAsDataUrl(bgmFile) : "";
+    let audioConfig = stopAudio ? { action: "stop" } : (bgmUrl ? { action: "play", url: bgmUrl } : { action: "continue" });
 
     const sfxFile = document.getElementById('edit-sfx')?.files[0];
-    let sfxUrl = sfxFile ? URL.createObjectURL(sfxFile) : "";
+    let sfxUrl = sfxFile ? await readFileAsDataUrl(sfxFile) : "";
 
     const hpConfig = { state: document.getElementById('edit-hp-state').value, amount: parseInt(document.getElementById('edit-hp-amount').value) || 0, applied: false };
 
@@ -266,8 +421,9 @@ function addNewNode() {
     ['edit-node-id','edit-dialogue','edit-next-node','edit-hp-amount','edit-add-ev-id','edit-add-ev-name','edit-add-ev-desc','edit-add-ev-img','edit-correct-ev','edit-ev-pass','edit-ev-fail','edit-press-node','edit-ce-setup','edit-ce-hint','edit-ce-all-pressed','edit-ce-fail-ev','edit-ce-add-new','edit-ce-add-after'].forEach(i => { if(document.getElementById(i)) document.getElementById(i).value=''; });
     document.getElementById('choices-container').innerHTML = '';
     
-    if (document.getElementById('player-view').classList.contains('active-view')) playNode(id);
-    else renderFlowchart();
+    previewAudioPlayer.pause();
+    previewAudioPlayer.currentTime = 0;
+    playFromNode(id);
 }
 
 // ==========================================
@@ -277,6 +433,7 @@ let draggedNodeId = null, offsetX = 0, offsetY = 0;
 let linkingFrom = null; 
 let isPanning = false, panStartX = 0, panStartY = 0, scrollL = 0, scrollT = 0;
 
+// Ve cac node len canvas flowchart va cap nhat kich thuoc khu vuc lam viec.
 function renderFlowchart() {
     const layer = document.getElementById('nodes-layer'); layer.innerHTML = '';
     const canvasArea = document.getElementById('canvas-area');
@@ -328,6 +485,7 @@ function renderFlowchart() {
 }
 
 // PAN CAMERA 
+// Bat dau thao tac pan camera khi keo nen canvas flowchart.
 document.getElementById('canvas-wrapper').addEventListener('mousedown', (e) => {
     if (e.target.id === 'canvas-wrapper' || e.target.id === 'canvas-area' || e.target.tagName === 'svg') {
         isPanning = true; panStartX = e.clientX; panStartY = e.clientY;
@@ -338,6 +496,7 @@ document.getElementById('canvas-wrapper').addEventListener('mousedown', (e) => {
 });
 
 // NODE DRAG 
+// Bat dau keo mot node trong flowchart.
 function startDrag(e, nodeId) {
     e.stopPropagation(); draggedNodeId = nodeId;
     const box = document.getElementById(`ui-node-${nodeId}`);
@@ -345,11 +504,13 @@ function startDrag(e, nodeId) {
 }
 
 // LINKING 
+// Bat dau noi day tu cong output cua node/choice.
 function startLink(e, srcId, type, choiceIdx = 0) {
     e.stopPropagation(); linkingFrom = { srcId, type, choiceIdx };
     document.getElementById('temp-link-line').style.display = 'block';
 }
 
+// Hoan tat noi day va cap nhat nextNode/choice target cho scene nguon.
 function finishLink(e, targetId) {
     // [FIX BUGS]: Chỉ chặn sự kiện nếu người dùng đang NỐI DÂY (linkingFrom có dữ liệu)
     if (!linkingFrom) return; 
@@ -368,6 +529,7 @@ function finishLink(e, targetId) {
 }
 
 // CHUỘT DI CHUYỂN CHUNG
+// Xu ly di chuyen chuot cho pan canvas, keo node va ve day noi tam.
 window.addEventListener('mousemove', (e) => {
     if (isPanning) {
         const wrapper = document.getElementById('canvas-wrapper');
@@ -394,6 +556,7 @@ window.addEventListener('mousemove', (e) => {
 });
 
 // [FIX BUGS]: NHẢ CHUỘT CHUNG (XÓA SẠCH TRẠNG THÁI KÉO)
+// Ket thuc thao tac keo/pan/noi day va luu lai vi tri node neu co.
 window.addEventListener('mouseup', () => {
     // 1. Nhả camera
     if (isPanning) { isPanning = false; document.getElementById('canvas-wrapper').style.cursor = 'grab'; }
@@ -414,6 +577,7 @@ window.addEventListener('mouseup', () => {
     if (linkingFrom) { linkingFrom = null; document.getElementById('temp-link-line').style.display = 'none'; }
 });
 
+// Ve lai tat ca duong noi giua cac node theo nextNode va choices.
 function drawConnections() {
     const svg = document.getElementById('svg-lines');
     Array.from(svg.children).forEach(child => { if(child.id !== 'temp-link-line') svg.removeChild(child); });
@@ -438,6 +602,7 @@ function drawConnections() {
     });
 }
 
+// Ve mot duong cong SVG tu node nguon den node dich.
 function drawPath(svg, x1, y1, targetId, cssClass) {
     const el2 = document.getElementById(`ui-node-${targetId}`);
     if (!el2) return;
@@ -451,6 +616,7 @@ function drawPath(svg, x1, y1, targetId, cssClass) {
 // ==========================================
 // 4. CÁC CÔNG CỤ CỦA NODE
 // ==========================================
+// Cat tat ca lien ket di ra tu mot node.
 function breakLinks(nodeId) {
     const node = storyData.find(n => n.id === nodeId);
     if (!node) return;
@@ -459,6 +625,7 @@ function breakLinks(nodeId) {
     setStoryDataCache(storyData); renderFlowchart();
 }
 
+// Xoa node va don sach cac lien ket dang tro den node do.
 function deleteNode(nodeId) {
     if(confirm(`Xóa vĩnh viễn Node: ${nodeId}?`)) {
         storyData = storyData.filter(n => n.id !== nodeId);
@@ -470,6 +637,7 @@ function deleteNode(nodeId) {
     }
 }
 
+// Mo modal sua nhanh ten nhan vat, noi dung thoai va VFX cua node.
 function openEditModal(nodeId) {
     const node = storyData.find(n => n.id === nodeId);
     if (!node) return;
@@ -480,8 +648,10 @@ function openEditModal(nodeId) {
     document.getElementById('edit-modal').style.display = 'flex';
 }
 
+// Dong modal sua node.
 function closeModal() { document.getElementById('edit-modal').style.display = 'none'; }
 
+// Luu thay doi trong modal vao node va render lai flowchart.
 function saveModalEdit() {
     const node = storyData.find(n => n.id === document.getElementById('modal-node-id').value);
     if (node) {
@@ -498,6 +668,7 @@ function saveModalEdit() {
 // ==========================================
 // 5. PLAYER CORE (GAMEPLAY, CE, HP)
 // ==========================================
+// Ve penalty bar theo trang thai an/hien/canh bao/tru mau.
 function renderHPBar(state, amount) {
     const bar = document.getElementById('penalty-bar'); bar.innerHTML = '';
     for (let i = 1; i <= MAX_HP; i++) {
@@ -509,6 +680,7 @@ function renderHPBar(state, amount) {
     }
 }
 
+// Ve cac cham chi vi tri trong vong doi chat/cross-examination.
 function renderCEDots(currentIndex, total) {
     const container = document.getElementById('ce-dots-container'); container.innerHTML = '';
     for(let i=0; i<total; i++) {
@@ -516,6 +688,7 @@ function renderCEDots(currentIndex, total) {
         container.appendChild(dot);
     }
 }
+// Chuyen sang loi khai tiep theo trong cross-examination.
 function goNextTestimony() {
     if(!activeCE || isTyping) return;
     const idx = activeCE.testimonies.indexOf(storyData[currentNodeIndex].id);
@@ -525,18 +698,21 @@ function goNextTestimony() {
         else playNode(activeCE.testimonies[0]);
     }
 }
+// Quay ve loi khai truoc trong cross-examination.
 function goPrevTestimony() {
     if(!activeCE || isTyping) return;
     const idx = activeCE.testimonies.indexOf(storyData[currentNodeIndex].id);
     if(idx > 0) playNode(activeCE.testimonies[idx - 1]);
 }
 
+// Chuyen sang tab player va phat scene tu node duoc chon.
 function playFromNode(nodeId) {
     if (isTyping) { clearTimeout(typeTimeout); isTyping = false; }
     document.getElementById('choice-container').style.display = 'none'; document.getElementById('inventory-ui').style.display = 'none';
     isWaitingForChoice = false; isWaitingForEvidence = false; activeCE = null; switchTab('player'); playNode(nodeId);
 }
 
+// Phat mot scene: cap nhat hinh anh, am thanh, UI gameplay, lua chon, bang chung va text.
 function playNode(nodeId) {
     const nodeIndex = storyData.findIndex(s => s.id === nodeId);
     if (nodeIndex === -1) return;
@@ -625,6 +801,7 @@ function playNode(nodeId) {
     document.getElementById('dialogue-text').textContent = ""; isTyping = true; typeWriter(node.dialogueText, 0);
 }
 
+// Hien thi cau thoai theo hieu ung go chu va mo UI choice/evidence khi go xong.
 function typeWriter(text, charIndex) {
     if (charIndex < text.length) {
         document.getElementById('dialogue-text').textContent += text.charAt(charIndex); charIndex++;
@@ -639,6 +816,7 @@ function typeWriter(text, charIndex) {
     }
 }
 
+// Ve UI ho so bang chung va xu ly chon bang chung.
 function renderInventoryUI() {
     const grid = document.getElementById('evidence-grid'); grid.innerHTML = ''; selectedEvidenceId = null;
     document.getElementById('ev-name').textContent = "Chọn bằng chứng"; document.getElementById('ev-desc').textContent = "";
@@ -653,6 +831,7 @@ function renderInventoryUI() {
     });
 }
 
+// Xu ly phim Q/E/mui ten cho tra hoi, trinh bang chung va dieu huong loi khai.
 document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || storyData.length === 0) return;
     const node = storyData[currentNodeIndex];
@@ -682,6 +861,7 @@ document.addEventListener('keydown', (e) => {
     else if (e.key === 'ArrowRight') goNextTestimony();
 });
 
+// Xu ly click tren trinh phat de skip typing hoac chuyen sang scene tiep theo.
 document.addEventListener('click', (e) => {
     if (e.target.closest('#editor-panel') || e.target.closest('#tabs-bar') || e.target.closest('#inventory-ui') || e.target.closest('.ce-arrow') || e.target.closest('.visual-node') || e.target.closest('.modal-content')) return;
     if ((isWaitingForChoice || isWaitingForEvidence) && !isTyping) return; 
@@ -699,6 +879,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Luu draft hien tai va mo trang visual editor cho node dang soan.
 function goToVisualEditor() {
     let customId = document.getElementById('edit-node-id').value;
     if (!customId) { alert("Vui lòng nhập ID Node!"); return; }
@@ -707,6 +888,7 @@ function goToVisualEditor() {
     window.location.href = 'visual-editor.html';
 }
 
+// Them mot dong nhap dap an lua chon cho scene dang soan.
 function addChoiceField() {
     const container = document.getElementById('choices-container');
     const row = document.createElement('div'); row.className = 'choice-input-row';
@@ -714,6 +896,7 @@ function addChoiceField() {
     container.appendChild(row);
 }
 
+// Tai kich ban hien tai ve may duoi dang story_data.json.
 function exportData() {
     if(storyData.length===0) return;
     const a = document.createElement('a');
@@ -721,6 +904,102 @@ function exportData() {
     a.download = "story_data.json"; document.body.appendChild(a); a.click(); a.remove();
 }
 
+// Tai document kich ban ve may voi ten file duoc truyen vao.
+function downloadStoryDocument(fileName) {
+    const a = document.createElement('a');
+    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(buildStoryDocument(storyData), null, 2));
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+
+// Goi API local server de ghi document kich ban vao story_data.json cua project.
+async function saveStoryDocumentToProject(documentData) {
+    if (window.location.protocol === 'file:') {
+        return false;
+    }
+
+    const response = await fetch('/api/save-story', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(documentData)
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(payload.error || 'Khong ghi duoc story_data.json');
+    }
+
+    return true;
+}
+
+// Luu kich ban hien tai vao project neu co server, neu khong thi tai file JSON ve may.
+async function saveCurrentStoryJson() {
+    if (storyData.length === 0) {
+        alert("Chua co kich ban de luu.");
+        return;
+    }
+
+    const documentData = buildStoryDocument(storyData);
+    try {
+        const savedToProject = await saveStoryDocumentToProject(documentData);
+        if (savedToProject) {
+            setStoryDataCache(storyData);
+            alert("Da luu kich ban hien tai vao story_data.json.");
+            return;
+        }
+    } catch (error) {
+        console.warn('Khong luu truc tiep duoc story_data.json:', error);
+    }
+
+    const now = new Date();
+    const timestamp = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+        String(now.getHours()).padStart(2, '0'),
+        String(now.getMinutes()).padStart(2, '0'),
+        String(now.getSeconds()).padStart(2, '0')
+    ].join('');
+    downloadStoryDocument(`story_data_${timestamp}.json`);
+}
+
+// Doc file JSON nguoi dung upload, nap vao editor va phat scene dau tien neu co.
+function importStoryJson(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const importedData = JSON.parse(reader.result);
+            storyData = normalizeStoryData(importedData);
+            setStoryDataCache(storyData);
+            localStorage.removeItem(EDITOR_DRAFT_KEY);
+            playerInventory = [];
+            activeCE = null;
+            currentHP = 10;
+            renderFlowchart();
+            if (storyData.length > 0) playFromNode(storyData[0].id);
+            alert("Da tai kich ban cu. Ban co the tiep tuc sua.");
+        } catch (error) {
+            alert("File JSON khong hop le.");
+        } finally {
+            input.value = "";
+        }
+    };
+    reader.onerror = () => {
+        alert("Khong doc duoc file JSON.");
+        input.value = "";
+    };
+    reader.readAsText(file);
+}
+
+// Sau khi engine khoi tao, khoi phuc draft va bat preview media tren form.
 initEngine().then(() => {
     hydrateEditorFormFromDraft();
+    bindSceneMediaPreview();
 });
