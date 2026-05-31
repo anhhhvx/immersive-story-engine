@@ -417,10 +417,19 @@ async function addNewNode() {
     setStoryDataCache(storyData);
     localStorage.removeItem(EDITOR_DRAFT_KEY);
     
-    // Clear Form
+// --- BẮT ĐẦU ĐOẠN CODE SỬA LỖI TRONG addNewNode ---
+    // Clear Form (Xóa sạch Text)
     ['edit-node-id','edit-dialogue','edit-next-node','edit-hp-amount','edit-add-ev-id','edit-add-ev-name','edit-add-ev-desc','edit-add-ev-img','edit-correct-ev','edit-ev-pass','edit-ev-fail','edit-press-node','edit-ce-setup','edit-ce-hint','edit-ce-all-pressed','edit-ce-fail-ev','edit-ce-add-new','edit-ce-add-after'].forEach(i => { if(document.getElementById(i)) document.getElementById(i).value=''; });
-    document.getElementById('choices-container').innerHTML = '';
     
+    // [FIX BUG]: Xóa sạch các ô chọn File (Ảnh, Nhạc) và VFX để không bị ngậm file cũ, tránh lặp nhạc
+    ['edit-bg-img', 'edit-char-img', 'edit-bgm', 'edit-sfx', 'edit-bg-vfx', 'edit-char-vfx'].forEach(i => { if(document.getElementById(i)) document.getElementById(i).value=''; });
+    
+    if(document.getElementById('edit-hp-state')) document.getElementById('edit-hp-state').value='hidden';
+    if(document.getElementById('edit-stop-audio')) document.getElementById('edit-stop-audio').checked=false;
+    
+    document.getElementById('choices-container').innerHTML = '';
+    // --- KẾT THÚC ĐOẠN CODE SỬA LỖI ---
+
     previewAudioPlayer.pause();
     previewAudioPlayer.currentTime = 0;
     playFromNode(id);
@@ -754,11 +763,21 @@ function playNode(nodeId) {
     else { charSprite.removeAttribute('src'); charSprite.style.display = "none"; }
     charSprite.className = (config && config.charVfx) ? config.charVfx : "";
 
+// --- TÌM VÀ THAY THẾ ĐOẠN XỬ LÝ AUDIO TRONG playNode ---
     if (node.audio) {
-        if (node.audio.action === "stop") { bgmPlayer.pause(); bgmPlayer.currentTime = 0; }
-        else if (node.audio.action === "play" && node.audio.url) { bgmPlayer.src = node.audio.url; bgmPlayer.play().catch(e=>{}); }
+        if (node.audio.action === "stop") { 
+            bgmPlayer.pause(); 
+            bgmPlayer.currentTime = 0; 
+        }
+        else if (node.audio.action === "play" && node.audio.url) { 
+            // [FIX BUG]: Chỉ thay đổi và phát lại nếu link nhạc mới khác với bài đang phát
+            if (bgmPlayer.src !== node.audio.url) {
+                bgmPlayer.src = node.audio.url; 
+                bgmPlayer.play().catch(e=>{}); 
+            }
+        }
+        // Nếu là "continue", hệ thống bỏ qua và nhạc vẫn chạy mượt mà
     }
-    if (node.sfxUrl) { sfxPlayer.src = node.sfxUrl; sfxPlayer.currentTime = 0; sfxPlayer.play().catch(e=>{}); }
 
     let hpState = node.hpConfig ? node.hpConfig.state : 'hidden';
     let hpAmount = node.hpConfig ? node.hpConfig.amount : 0;

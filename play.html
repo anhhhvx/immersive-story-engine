@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chơi Game - Ace Attorney Style</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Ghi đè CSS cũ để hiển thị Fullscreen */
+        body { display: block; overflow: hidden; background: #000; margin: 0; padding: 0; }
+        #game-wrapper { width: 100vw; height: 100vh; position: relative; display: none; }
+        #story-container { width: 100%; height: 100%; position: absolute; top:0; left:0; }
+        
+        /* Màn hình Start Game */
+        #start-screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: url('https://i.imgur.com/2tS0l7u.jpg') center/cover; /* Đổi link ảnh nền start nếu muốn */
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .start-btn {
+            background: #e74c3c; color: white; border: 4px solid #fff; border-radius: 8px;
+            padding: 20px 50px; font-size: 2rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5); transition: 0.2s; text-transform: uppercase;
+        }
+        .start-btn:hover { background: #c0392b; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <div id="start-screen">
+        <h1 style="color: white; font-size: 4rem; text-shadow: 2px 2px 10px #000; margin-bottom: 50px;">Án Mạng Trong Đêm</h1>
+        <button class="start-btn" onclick="startGame()">▶ Bắt Đầu Chơi</button>
+    </div>
+
+    <div id="game-wrapper">
+        <div id="story-container">
+            <div id="background-layer"></div>
+            <div id="character-layer"><img id="character-sprite" src="" alt=""></div>
+            <div id="fx-layer"></div>
+            
+            <div id="penalty-container"><div id="penalty-bar"></div></div>
+            
+            <div id="ce-ui" style="display: none;">
+                <div id="ce-arrow-left" class="ce-arrow" onclick="goPrevTestimony()">&#10094;</div>
+                <div id="ce-arrow-right" class="ce-arrow" onclick="goNextTestimony()">&#10095;</div>
+                <div id="ce-dots-container"></div>
+            </div>
+
+            <div id="choice-container" style="display: none;"></div>
+            
+            <div id="inventory-ui" style="display: none;">
+                <div id="evidence-info">
+                    <h3 id="ev-name">Tên Bằng Chứng</h3><p id="ev-desc">Mô tả...</p>
+                </div>
+                <div id="evidence-grid"></div>
+                <div class="hint-text">Nhấn [ E ] để Trình bằng chứng</div>
+            </div>
+            
+            <div id="evidence-added-popup" style="display: none;">
+                <div class="ev-added-content">
+                    <div class="ev-added-left"><img id="ev-added-img" src="" alt=""></div>
+                    <div class="ev-added-right"><h3 id="ev-added-name">Tên</h3><p id="ev-added-desc">Mô tả</p></div>
+                </div>
+                <div class="ev-added-banner">Đã thêm vào Hồ sơ vụ án</div>
+            </div>
+
+            <div id="dialogue-box">
+                <div id="action-hints" style="position: absolute; top: -30px; right: 0; display: none;">
+                    <span class="hint-pill">Nhấn [ Q ] Tra hỏi</span><span class="hint-pill">Nhấn [ E ] Bằng chứng</span>
+                </div>
+                <h3 id="character-name">Hệ thống</h3>
+                <p id="dialogue-text">Đang tải dữ liệu...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="play.js"></script>
+</body>
+</html>
