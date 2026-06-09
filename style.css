@@ -1,11 +1,17 @@
+/* ==========================================
+   1. BASE & LAYOUT CHUNG
+   ========================================== */
 body {
     margin: 0; padding: 0;
     background-color: #1a1a1a;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow: hidden; display: flex; 
+    width: 100vw; height: 100vh; /* Khóa cứng kích thước tổng */
 }
 
-/* --- EDITOR PANEL --- */
+/* ==========================================
+   2. EDITOR PANEL (BẢNG ĐIỀU KHIỂN BÊN TRÁI)
+   ========================================== */
 #editor-panel {
     width: 420px; min-width: 420px;
     background-color: #2c3e50; color: #ecf0f1;
@@ -14,33 +20,49 @@ body {
 }
 .input-group { margin-bottom: 15px; }
 .input-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem;}
-.input-group input, .input-group textarea {
+.input-group input, .input-group textarea, .input-group select {
     width: 100%; padding: 10px; border-radius: 6px; border: none; box-sizing: border-box;
     background: #34495e; color: white;
 }
+.input-group input::placeholder, .input-group textarea::placeholder { color: #95a5a6; }
+
 button {
     width: 100%; padding: 12px; margin-bottom: 10px; background-color: #3498db; color: white; 
     border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s;
 }
 button:hover { background-color: #2980b9; }
 
-.ce-box { background: #d35400; padding: 15px; border-radius: 8px; }
+/* Nhóm màu sắc cho từng Module */
+.ce-box { background: #d35400; padding: 15px; border-radius: 8px; margin-top: 15px;}
+.ce-box label { color: white; margin-bottom: 10px; font-size: 1rem; }
 .evidence-box { background: #27ae60; padding: 15px; border-radius: 8px; margin-top: 15px;}
+.evidence-box label { color: white; margin-bottom: 10px; font-size: 1rem; }
 .hp-box { background: #8e44ad; padding: 15px; border-radius: 8px; margin-top: 15px;}
+.hp-box label { color: white; margin-bottom: 10px; font-size: 1rem; font-weight: bold;}
+
 .choice-input-row { display: flex; gap: 5px; margin-bottom: 5px; }
 .choice-input-row input { flex-grow: 1; }
 .btn-remove-choice { width: auto !important; background: #e74c3c !important; padding: 10px !important; margin: 0 !important; }
 
-/* --- WORKSPACE LAYOUT --- */
-#workspace { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; position: relative;}
+/* ==========================================
+   3. WORKSPACE & TABS (BÊN PHẢI)
+   ========================================== */
+#workspace { 
+    flex-grow: 1; display: flex; flex-direction: column; 
+    height: 100vh; width: calc(100vw - 420px); /* Khóa cứng khoảng trống còn lại trừ đi panel */
+    background: #1e1e1e; position: relative;
+    overflow: hidden; /* Cắt bỏ ngay lập tức phần thừa */
+}
 #tabs-bar { display: flex; background: #2c3e50; padding: 0 10px; border-bottom: 2px solid #000; }
 .tab-btn { width: auto; margin: 0; margin-right: 5px; border-radius: 8px 8px 0 0; background: #34495e; color: #95a5a6; padding: 10px 20px; font-weight: normal; }
 .tab-btn.active { background: #1e1e1e; color: #fff; font-weight: bold; }
 .view-content { display: none; flex-grow: 1; position: relative; }
 .view-content.active-view { display: flex; flex-direction: column; }
 
-/* --- STAGE LAYER MANAGEMENT --- */
-#story-container { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+/* ==========================================
+   4. PLAYER VIEW (TRÌNH PHÁT GAME)
+   ========================================== */
+#story-container { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; overflow: hidden; }
 #background-layer, #character-layer, #fx-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;}
 
 #background-layer { background-size: cover; background-position: center; z-index: 1; transition: filter 0.3s ease; }
@@ -48,18 +70,20 @@ button:hover { background-color: #2980b9; }
 #character-sprite { height: 85vh; object-fit: contain; display: none; transition: filter 0.3s ease; }
 #fx-layer { z-index: 4; }
 
-/* --- ĐỔI MỚI: BỘ LỌC BẰNG CSS FILTER TRỰC TIẾP --- */
+/* VFX Filters */
 .fx-sepia { filter: sepia(0.8) !important; }
 .fx-grayscale { filter: grayscale(1) !important; }
 .fx-blur { filter: blur(6px) !important; }
 .fx-invert { filter: invert(1) !important; }
 
-/* --- NÚT SOẠN THẢO DIỄN BIẾN --- */
+/* Khung thoại */
 #dialogue-box { position: relative; z-index: 10; width: 80%; max-width: 900px; background: rgba(255, 255, 255, 0.95); margin-bottom: 40px; padding: 24px 32px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); border: 2px solid #e0e0e0; }
 #character-name { margin: 0 0 10px 0; font-size: 1.4rem; color: #333; font-weight: 700; text-transform: uppercase; }
 #dialogue-text { margin: 0; font-size: 1.2rem; color: #444; line-height: 1.6; min-height: 3.8rem; }
 
-/* --- CROSS-EXAMINATION NAV --- */
+/* ==========================================
+   5. GIAO DIỆN CROSS-EXAMINATION & MÁU
+   ========================================== */
 #ce-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 15; pointer-events: none; }
 .ce-arrow { position: absolute; top: 50%; transform: translateY(-50%); font-size: 4rem; color: rgba(255, 255, 255, 0.7); cursor: pointer; pointer-events: auto; transition: 0.2s; text-shadow: 0 0 10px #f39c12; font-weight: bold; }
 .ce-arrow:hover { color: #f1c40f; text-shadow: 0 0 20px #f1c40f; transform: translateY(-50%) scale(1.1); }
@@ -70,36 +94,7 @@ button:hover { background-color: #2980b9; }
 .ce-dot.active { background: #2ecc71; border-color: #fff; box-shadow: 0 0 10px #2ecc71; }
 .hint-pill { background: #e74c3c; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.4); margin-left: 10px; }
 
-/* --- TÚI ĐỒ & CHỌN ĐÁN --- */
-#choice-container { position: absolute; bottom: 160px; width: 80%; max-width: 800px; z-index: 20; display: flex; flex-direction: column; gap: 12px; align-items: center; }
-.choice-btn { background: rgba(41, 128, 185, 0.95); color: white; border: 2px solid #fff; padding: 15px 30px; font-size: 1.2rem; border-radius: 8px; cursor: pointer; width: 80%; }
-#inventory-ui { position: absolute; top: 10%; width: 80%; max-width: 800px; background: rgba(236, 240, 241, 0.95); border: 4px solid #3498db; border-radius: 8px; z-index: 30; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-#evidence-info { padding: 15px 20px; background: #fff; border-bottom: 2px solid #bdc3c7; min-height: 80px; }
-#ev-name { margin: 0 0 5px 0; color: #d35400; font-size: 1.4rem; }
-#ev-desc { margin: 0; color: #333; font-size: 1rem; }
-#evidence-grid { display: flex; padding: 15px; gap: 10px; overflow-x: auto; background: #2980b9; min-height: 100px; }
-.ev-item { width: 80px; height: 80px; background: #fff; border: 3px solid #bdc3c7; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
-.ev-item img { max-width: 90%; max-height: 90%; object-fit: contain; }
-.ev-item.selected { border-color: #f1c40f; box-shadow: 0 0 15px #f1c40f; transform: scale(1.1); }
-.hint-text { text-align: center; background: #34495e; color: #fff; padding: 5px; font-weight: bold; font-size: 0.9rem; }
-
-/* --- POPUP THÊM ĐỒ --- */
-#evidence-added-popup { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); width: 70%; max-width: 600px; background: rgba(255, 255, 255, 0.98); border: 3px solid #3498db; border-radius: 4px; z-index: 25; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: popIn 0.3s ease-out; }
-@keyframes popIn { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
-.ev-added-content { display: flex; padding: 15px; }
-.ev-added-left { width: 120px; height: 120px; background: #e0e0e0; display: flex; justify-content: center; align-items: center; border: 2px solid #bdc3c7; margin-right: 15px; }
-.ev-added-left img { max-width: 90%; max-height: 90%; object-fit: contain; }
-.ev-added-right { flex: 1; }
-.ev-added-right h3 { margin: 0 0 10px 0; color: #f39c12; border-bottom: 2px solid #f39c12; padding-bottom: 5px; }
-.ev-added-banner { background: #2c3e50; color: #fff; text-align: center; padding: 8px; font-weight: bold; font-size: 0.9rem; border-top: 2px solid #3498db; }
-
-/* --- FLOWCHART VIEW --- */
-#flowchart-view { overflow: auto; padding: 40px; background: #2d2d30; }
-#canvas-area { display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-start; }
-.flow-node { background: #252526; border: 2px solid #007acc; border-radius: 8px; padding: 15px; width: 250px; color: #d4d4d4; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-.flow-choice { background: #333; padding: 5px 10px; margin-top: 5px; border-radius: 4px; border-left: 3px solid #f39c12; display: flex; justify-content: space-between; }
-
-/* --- THANH NĂNG LỰC SKEW --- */
+/* Thanh Năng Lực (HP) */
 #penalty-container {
     position: absolute; top: 20px; right: -420px; 
     transition: right 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.15); 
@@ -119,7 +114,72 @@ button:hover { background-color: #2980b9; }
     0% { background: #ff0000; box-shadow: 0 0 20px #ff0000; transform: skewX(-20deg) scale(1.15); }
     100% { background: rgba(255, 255, 255, 0.15); box-shadow: none; transform: skewX(-20deg) scale(1); }
 }
-/* --- TRỰC QUAN NODE EDITOR --- */
+
+/* ==========================================
+   6. TÚI ĐỒ (INVENTORY) & LỰA CHỌN
+   ========================================== */
+#choice-container { position: absolute; bottom: 160px; width: 80%; max-width: 800px; z-index: 20; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.choice-btn { background: rgba(41, 128, 185, 0.95); color: white; border: 2px solid #fff; padding: 15px 30px; font-size: 1.2rem; border-radius: 8px; cursor: pointer; width: 80%; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+.choice-btn:hover { background: rgba(52, 152, 219, 1); transform: scale(1.02); }
+
+#inventory-ui { position: absolute; top: 10%; width: 80%; max-width: 800px; background: rgba(236, 240, 241, 0.95); border: 4px solid #3498db; border-radius: 8px; z-index: 30; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+#evidence-info { padding: 15px 20px; background: #fff; border-bottom: 2px solid #bdc3c7; min-height: 80px; }
+#ev-name { margin: 0 0 5px 0; color: #d35400; font-size: 1.4rem; }
+#ev-desc { margin: 0; color: #333; font-size: 1rem; }
+#evidence-grid { display: flex; padding: 15px; gap: 10px; overflow-x: auto; background: #2980b9; min-height: 100px; }
+.ev-item { width: 80px; height: 80px; background: #fff; border: 3px solid #bdc3c7; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
+.ev-item img { max-width: 90%; max-height: 90%; object-fit: contain; }
+.ev-item.selected { border-color: #f1c40f; box-shadow: 0 0 15px #f1c40f; transform: scale(1.1); }
+.hint-text { text-align: center; background: #34495e; color: #fff; padding: 5px; font-weight: bold; font-size: 0.9rem; }
+
+/* Popup Thêm Bằng Chứng */
+#evidence-added-popup { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); width: 70%; max-width: 600px; background: rgba(255, 255, 255, 0.98); border: 3px solid #3498db; border-radius: 4px; z-index: 25; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: popIn 0.3s ease-out; }
+@keyframes popIn { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+.ev-added-content { display: flex; padding: 15px; }
+.ev-added-left { width: 120px; height: 120px; background: #e0e0e0; display: flex; justify-content: center; align-items: center; border: 2px solid #bdc3c7; margin-right: 15px; }
+.ev-added-left img { max-width: 90%; max-height: 90%; object-fit: contain; }
+.ev-added-right { flex: 1; }
+.ev-added-right h3 { margin: 0 0 10px 0; color: #f39c12; border-bottom: 2px solid #f39c12; padding-bottom: 5px; }
+.ev-added-banner { background: #2c3e50; color: #fff; text-align: center; padding: 8px; font-weight: bold; font-size: 0.9rem; border-top: 2px solid #3498db; }
+
+/* ==========================================
+   7. FLOWCHART / VISUAL NODE EDITOR
+   ========================================== */
+#flowchart-view { 
+    padding: 0 !important; 
+    background: #202020; 
+    flex-grow: 1;
+    position: relative; /* Tạo mỏ neo cho Wrapper bên trong */
+    min-height: 0; min-width: 0; /* Ép flexbox không được phình to theo content */
+}
+
+#canvas-wrapper { 
+    /* Dùng absolute phủ kín 100% khoảng trống */
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+    overflow: auto !important; /* Bật thanh cuộn ngang và dọc */
+}
+
+/* Trang trí thanh cuộn */
+#canvas-wrapper::-webkit-scrollbar {
+    width: 16px;  /* Chiều rộng cho thanh cuộn dọc */
+    height: 16px; /* Chiều cao cho thanh cuộn ngang */
+}
+#canvas-wrapper::-webkit-scrollbar-track {
+    background: #1e1e1e; 
+}
+#canvas-wrapper::-webkit-scrollbar-thumb {
+    background: #569cd6; 
+    border-radius: 8px;
+    border: 4px solid #1e1e1e; /* Tạo viền giả */
+}
+#canvas-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #4ec9b0; 
+}
+#canvas-wrapper::-webkit-scrollbar-corner {
+    background: #1e1e1e; /* Góc vuông giao nhau */
+}
+
+/* Khối Node */
 .visual-node {
     position: absolute; background: rgba(37, 37, 38, 0.95); border: 2px solid #569cd6; border-radius: 8px;
     width: 280px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); color: #d4d4d4; font-size: 0.9rem;
@@ -133,13 +193,13 @@ button:hover { background-color: #2980b9; }
 .visual-node-body { padding: 12px; }
 .visual-node .dialogue-preview { font-style: italic; color: #ce9178; margin: 10px 0; border-left: 2px solid #ce9178; padding-left: 5px; }
 
-/* Các nút công cụ trên Node */
+/* Tool Buttons trên Node */
 .node-tools { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap;}
 .tool-btn { flex: 1; padding: 5px; font-size: 0.8rem; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; min-width: 45%; }
 .btn-play { background: #27ae60; } .btn-edit { background: #f39c12; }
 .btn-break { background: #8e44ad; } .btn-delete { background: #e74c3c; width: 100%; margin-top: 5px; }
 
-/* CỔNG KẾT NỐI (PORTS) */
+/* Cổng kết nối (Ports) */
 .port-container { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px; padding-top: 5px; border-top: 1px dashed #555; }
 .port-out {
     width: 16px; height: 16px; background: #f39c12; border: 2px solid #fff; border-radius: 50%;
@@ -153,7 +213,9 @@ button:hover { background-color: #2980b9; }
 .node-connection.choice { stroke: #f39c12; }
 @keyframes dash { to { stroke-dashoffset: 1000; } }
 
-/* --- MODAL EDIT CƠ BẢN --- */
+/* ==========================================
+   8. MODAL EDIT CƠ BẢN (POPUP CỦA NODE EDITOR)
+   ========================================== */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; display: flex; justify-content: center; align-items: center; }
 .modal-content { background: #2c3e50; padding: 25px; border-radius: 8px; width: 90%; max-width: 500px; box-shadow: 0 0 30px rgba(0,0,0,0.5); border: 1px solid #34495e; color: white; }
 .modal-input { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px; background: #34495e; color: white; border: none; border-radius: 4px; box-sizing: border-box; }
